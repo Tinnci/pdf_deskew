@@ -7,6 +7,7 @@ from PIL import Image
 from deskew import determine_skew
 import os
 import shutil
+import logging
 
 def rotate_image(image: np.ndarray, angle: float, background: tuple = (255, 255, 255)) -> np.ndarray:
     """
@@ -32,6 +33,7 @@ def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 
     try:
         pdf_document = fitz.open(input_pdf_path)
     except Exception as e:
+        logging.error(f"无法打开 PDF 文件: {e}")
         raise IOError(f"无法打开 PDF 文件: {e}")
 
     output_images = []
@@ -44,7 +46,8 @@ def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 
         total_pages = len(pdf_document)
         for page_num in range(total_pages):
             if progress_callback:
-                progress_callback.emit(int((page_num / total_pages) * 100))
+                progress_percentage = int((page_num / total_pages) * 100)
+                progress_callback.emit(progress_percentage)
             # 将页面渲染为图像
             page = pdf_document.load_page(page_num)
             pix = page.get_pixmap(dpi=dpi)  # 使用自定义 DPI
@@ -60,9 +63,11 @@ def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 
 
             # 如果检测到角度则进行校正
             if angle is not None:
+                logging.info(f"Detected skew angle {angle} degrees on page {page_num + 1}")
                 # 旋转图像校正倾斜，使用自定义背景颜色
                 corrected_img = rotate_image(img, angle, background=background_color)
             else:
+                logging.info(f"No skew detected on page {page_num + 1}")
                 corrected_img = img
 
             # 保存校正后的图像到临时文件夹
@@ -80,6 +85,10 @@ def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 
 
         if progress_callback:
             progress_callback.emit(100)
+
+    except Exception as e:
+        logging.error(f"Error during deskewing PDF: {e}")
+        raise e
 
     finally:
         # 清理临时文件夹
