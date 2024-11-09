@@ -6,18 +6,18 @@ import json
 import logging
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QFileDialog, QMessageBox, QCheckBox, QSpinBox,
-    QComboBox, QProgressBar, QColorDialog, QApplication
+    QComboBox, QProgressBar, QColorDialog, QApplication, QTextEdit
 )
 from PyQt6.QtCore import Qt, QMimeData
-from PyQt6.QtGui import QColor, QDragEnterEvent, QDropEvent, QIcon
+from PyQt6.QtGui import QColor, QDragEnterEvent, QDropEvent, QIcon, QPixmap, QImage
 
 from .worker import WorkerThread
-from deskew_tool.deskew_pdf import deskew_pdf  # Ensure correct import path
+from deskew_tool.deskew_pdf import deskew_pdf  # 确保正确的导入路径
 from qt_material import apply_stylesheet
 
 # 定义语言枚举
@@ -102,7 +102,17 @@ class MainWindow(QMainWindow):
                 "browse_tooltip": "Click to browse and select a PDF file",
                 "start_deskew_tooltip": "Click to start the deskew process",
                 "theme": "Theme:",
-                "theme_tooltip": "Select a theme for the application"
+                "theme_tooltip": "Select a theme for the application",
+                "choose_color_tooltip": "Choose a custom background color",
+                "help_tooltip": "Click for help",
+                "exit_tooltip": "Exit the application",
+                "status_label": "Status:",
+                "total_pages_label": "Total Pages:",
+                "current_page_label": "Current Page:",
+                "image_processing": "Image Processing Options:",
+                "remove_watermark": "Remove Watermark",
+                "enhance_image": "Enhance Image",
+                "convert_grayscale": "Convert to Grayscale"
             },
             'zh_CN': {
                 "window_title": "PDF 校准工具",
@@ -156,7 +166,17 @@ class MainWindow(QMainWindow):
                 "browse_tooltip": "点击浏览并选择一个PDF文件",
                 "start_deskew_tooltip": "点击开始校准过程",
                 "theme": "主题:",
-                "theme_tooltip": "选择应用程序的主题"
+                "theme_tooltip": "选择应用程序的主题",
+                "choose_color_tooltip": "选择自定义背景颜色",
+                "help_tooltip": "点击获取帮助",
+                "exit_tooltip": "退出应用程序",
+                "status_label": "状态:",
+                "total_pages_label": "总页数:",
+                "current_page_label": "当前页数:",
+                "image_processing": "图像处理选项:",
+                "remove_watermark": "移除水印",
+                "enhance_image": "增强图像",
+                "convert_grayscale": "转换为灰度图像"
             }
         }
 
@@ -195,6 +215,17 @@ class MainWindow(QMainWindow):
         self.help_info_title = t["help_info_title"]
         self.help_info_text = t["help_info_text"]
 
+        # 更新状态标签
+        self.status_label.setText(t.get("status_label", "Status:"))
+        self.total_pages_label.setText(t.get("total_pages_label", "Total Pages:"))
+        self.current_page_label.setText(t.get("current_page_label", "Current Page:"))
+
+        # 更新图像处理选项标签和复选框
+        self.image_processing_label.setText(t.get("image_processing", "Image Processing Options:"))
+        self.remove_watermark_checkbox.setText(t.get("remove_watermark", "Remove Watermark"))
+        self.enhance_image_checkbox.setText(t.get("enhance_image", "Enhance Image"))
+        self.convert_grayscale_checkbox.setText(t.get("convert_grayscale", "Convert to Grayscale"))
+
     def init_ui(self):
         """初始化用户界面"""
         # 设置允许拖放
@@ -204,7 +235,7 @@ class MainWindow(QMainWindow):
         main_layout = QVBoxLayout()
 
         # 拖放提示
-        self.drag_drop_label = QLabel()
+        self.drag_drop_label = QLabel("Drag and drop a PDF file here")
         self.drag_drop_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.drag_drop_label.setStyleSheet("border: 2px dashed #aaa; padding: 20px;")
         main_layout.addWidget(self.drag_drop_label)
@@ -265,6 +296,28 @@ class MainWindow(QMainWindow):
         bg_layout.addWidget(self.bg_button)
         main_layout.addLayout(bg_layout)
 
+        # 图像处理选项
+        image_processing_layout = QVBoxLayout()
+        self.image_processing_label = QLabel()
+        image_processing_layout.addWidget(self.image_processing_label)
+
+        # 移除水印复选框
+        self.remove_watermark_checkbox = QCheckBox()
+        self.remove_watermark_checkbox.setChecked(True)  # 默认选中
+        image_processing_layout.addWidget(self.remove_watermark_checkbox)
+
+        # 增强图像复选框
+        self.enhance_image_checkbox = QCheckBox()
+        self.enhance_image_checkbox.setChecked(True)  # 默认选中
+        image_processing_layout.addWidget(self.enhance_image_checkbox)
+
+        # 转换为灰度图像复选框
+        self.convert_grayscale_checkbox = QCheckBox()
+        self.convert_grayscale_checkbox.setChecked(False)  # 默认不选中
+        image_processing_layout.addWidget(self.convert_grayscale_checkbox)
+
+        main_layout.addLayout(image_processing_layout)
+
         # 语言选择
         language_layout = QHBoxLayout()
         self.language_label = QLabel()
@@ -313,6 +366,41 @@ class MainWindow(QMainWindow):
         progress_layout.addWidget(self.progress_bar)
         progress_layout.addWidget(self.progress_label)
         main_layout.addLayout(progress_layout)
+
+        # 状态标签和状态信息
+        status_layout = QHBoxLayout()
+        self.status_label = QLabel()  # 状态标签
+        self.status_text = QLabel()    # 显示状态信息
+        status_layout.addWidget(self.status_label)
+        status_layout.addWidget(self.status_text)
+        main_layout.addLayout(status_layout)
+
+        # 总页数和当前页数标签
+        pages_layout = QHBoxLayout()
+        self.total_pages_label = QLabel()  # 总页数标签
+        self.total_pages_value = QLabel("0")  # 总页数值
+        self.current_page_label = QLabel()  # 当前页数标签
+        self.current_page_value = QLabel("0")  # 当前页数值
+        pages_layout.addWidget(self.total_pages_label)
+        pages_layout.addWidget(self.total_pages_value)
+        pages_layout.addStretch()
+        pages_layout.addWidget(self.current_page_label)
+        pages_layout.addWidget(self.current_page_value)
+        main_layout.addLayout(pages_layout)
+
+        # 添加图像展示区域
+        self.before_label = QLabel("Before")
+        self.before_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.before_label.setStyleSheet("border: 1px solid black;")
+
+        self.after_label = QLabel("After")
+        self.after_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.after_label.setStyleSheet("border: 1px solid black;")
+
+        images_layout = QHBoxLayout()
+        images_layout.addWidget(self.before_label)
+        images_layout.addWidget(self.after_label)
+        main_layout.addLayout(images_layout)
 
         # 设置主窗口的中心部件
         container = QWidget()
@@ -370,6 +458,10 @@ class MainWindow(QMainWindow):
             self.dpi_spin.setEnabled(False)
             self.bg_combo.setEnabled(False)
             self.bg_button.setEnabled(False)
+            # Disable image processing options when using defaults
+            self.remove_watermark_checkbox.setEnabled(False)
+            self.enhance_image_checkbox.setEnabled(False)
+            self.convert_grayscale_checkbox.setEnabled(False)
         else:
             self.dpi_spin.setEnabled(True)
             self.bg_combo.setEnabled(True)
@@ -377,6 +469,10 @@ class MainWindow(QMainWindow):
                 self.bg_button.setEnabled(True)
             else:
                 self.bg_button.setEnabled(False)
+            # Enable image processing options
+            self.remove_watermark_checkbox.setEnabled(True)
+            self.enhance_image_checkbox.setEnabled(True)
+            self.convert_grayscale_checkbox.setEnabled(True)
 
     def bg_selection_changed(self, index):
         """背景颜色选择变化"""
@@ -421,6 +517,10 @@ class MainWindow(QMainWindow):
             if use_defaults:
                 dpi = 300
                 background_color = self.background_colors["White"].rgb
+                # 使用默认图像处理选项
+                remove_watermark = True
+                enhance_image = True
+                convert_grayscale = False
             else:
                 dpi = self.dpi_spin.value()
                 bg_selection = self.bg_combo.currentText()
@@ -433,6 +533,11 @@ class MainWindow(QMainWindow):
                 else:
                     background_color = self.background_colors["White"].rgb  # 默认白色
 
+                # 获取用户选择的图像处理选项
+                remove_watermark = self.remove_watermark_checkbox.isChecked()
+                enhance_image = self.enhance_image_checkbox.isChecked()
+                convert_grayscale = self.convert_grayscale_checkbox.isChecked()
+
             # 确认设置
             confirm_text = (
                 f"<h2>{t['confirm_settings_title']}</h2>"
@@ -440,6 +545,9 @@ class MainWindow(QMainWindow):
                 f"<p><b>{t['output_path']}</b> {output_pdf}</p>"
                 f"<p><b>{t['dpi']}</b> {dpi}</p>"
                 f"<p><b>{t['bg_color']}</b> {background_color}</p>"
+                f"<p><b>Remove Watermark:</b> {'Yes' if remove_watermark else 'No'}</p>"
+                f"<p><b>Enhance Image:</b> {'Yes' if enhance_image else 'No'}</p>"
+                f"<p><b>Convert to Grayscale:</b> {'Yes' if convert_grayscale else 'No'}</p>"
                 f"<p>{t['confirm_settings_text']}</p>"
             )
 
@@ -455,15 +563,27 @@ class MainWindow(QMainWindow):
             # 禁用界面元素
             self.set_ui_enabled(False)
 
-            # 重置进度条
+            # 重置进度条和页数显示
             self.progress_bar.setValue(0)
             self.progress_label.setText("0%")
+            self.status_text.setText("")  # 清空状态文本
+            self.total_pages_value.setText("0")
+            self.current_page_value.setText("0")
 
             # 启动工作线程
-            self.worker = WorkerThread(input_pdf, output_pdf, dpi, background_color)
+            selected_features = {
+                "remove_watermark": remove_watermark,
+                "enhance_image": enhance_image,
+                "convert_grayscale": convert_grayscale
+            }
+            self.worker = WorkerThread(input_pdf, output_pdf, dpi, background_color, selected_features)
             self.worker.progress.connect(self.update_progress)
             self.worker.finished.connect(self.processing_finished)
             self.worker.error.connect(self.processing_error)
+            self.worker.before_after.connect(self.display_before_after)  # 连接新的信号
+            self.worker.status.connect(self.update_status)  # 连接状态更新信号
+            self.worker.total_pages.connect(self.update_total_pages)  # 连接总页数信号
+            self.worker.current_page.connect(self.update_current_page)  # 连接当前页数信号
             self.worker.start()
 
         except Exception as e:
@@ -476,11 +596,25 @@ class MainWindow(QMainWindow):
         self.progress_bar.setValue(value)
         self.progress_label.setText(f"{value}%")
 
+    def update_status(self, message):
+        """更新状态信息"""
+        self.status_text.setText(message)
+        logging.info(f"Status Update: {message}")
+
+    def update_total_pages(self, total):
+        """更新总页数显示"""
+        self.total_pages_value.setText(str(total))
+
+    def update_current_page(self, current):
+        """更新当前页数显示"""
+        self.current_page_value.setText(str(current))
+
     def processing_finished(self, output_pdf):
         """处理完成"""
         t = self.get_translation()
         self.progress_bar.setValue(100)
         self.progress_label.setText("100%")
+        self.status_text.setText(t["processing_complete_text"])
         QMessageBox.information(self, t["processing_complete_title"], f"{t['processing_complete_text']}\n{output_pdf}")
 
         # 重新启用界面元素
@@ -494,6 +628,25 @@ class MainWindow(QMainWindow):
         # 重新启用界面元素
         self.set_ui_enabled(True)
 
+    def display_before_after(self, before_image_path, after_image_path):
+        """显示处理前后的图像"""
+        before_pix = QPixmap(before_image_path)
+        after_pix = QPixmap(after_image_path)
+        
+        # 缩放图像以适应标签
+        before_pix = before_pix.scaled(self.before_label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        after_pix = after_pix.scaled(self.after_label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        
+        self.before_label.setPixmap(before_pix)
+        self.after_label.setPixmap(after_pix)
+        
+        # 清理临时图像文件
+        try:
+            os.remove(before_image_path)
+            os.remove(after_image_path)
+        except Exception as e:
+            logging.warning(f"Unable to remove temporary images: {e}")
+
     def set_ui_enabled(self, enabled: bool):
         """启用或禁用所有UI元素"""
         self.run_button.setEnabled(enabled)
@@ -502,11 +655,19 @@ class MainWindow(QMainWindow):
         self.default_checkbox.setEnabled(enabled)
         self.dpi_spin.setEnabled(enabled and not self.default_checkbox.isChecked())
         self.bg_combo.setEnabled(enabled and not self.default_checkbox.isChecked())
-        self.bg_button.setEnabled(enabled and not self.default_checkbox.isChecked() and self.bg_combo.currentText() == self.get_translation()["custom"])
+        self.bg_button.setEnabled(
+            enabled and 
+            not self.default_checkbox.isChecked() and 
+            self.bg_combo.currentText() == self.get_translation().get("custom", "Custom")
+        )
         self.help_button.setEnabled(enabled)
         self.exit_button.setEnabled(enabled)
         self.language_combo.setEnabled(enabled)
         self.theme_combo.setEnabled(enabled)
+        # 控制图像处理复选框的启用状态
+        self.remove_watermark_checkbox.setEnabled(enabled and not self.default_checkbox.isChecked())
+        self.enhance_image_checkbox.setEnabled(enabled and not self.default_checkbox.isChecked())
+        self.convert_grayscale_checkbox.setEnabled(enabled and not self.default_checkbox.isChecked())
 
     def get_translation(self) -> Dict[str, str]:
         """获取当前语言的翻译字典"""

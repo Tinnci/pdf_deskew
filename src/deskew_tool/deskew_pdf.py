@@ -25,9 +25,55 @@ def rotate_image(image: np.ndarray, angle: float, background: tuple = (255, 255,
 
     return cv2.warpAffine(image, rot_mat, (int(round(new_width)), int(round(new_height))), borderValue=background)
 
-def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 255, 255), progress_callback=None):
+def remove_watermark(image: np.ndarray) -> np.ndarray:
     """
-    校正 PDF 文件中的图像倾斜。
+    尝试去除图像中的水印。
+    """
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # 使用自适应阈值
+    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                   cv2.THRESH_BINARY_INV, 15, 10)
+    
+    # 使用形态学操作去除水印
+    kernel = np.ones((3,3), np.uint8)
+    cleaned = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
+    
+    # 使用掩码去除水印
+    mask = cv2.bitwise_not(cleaned)
+    result = cv2.bitwise_and(image, image, mask=mask)
+    
+    return result
+
+def enhance_image(image: np.ndarray) -> np.ndarray:
+    """
+    优化图像的可读性，例如使用膨胀操作和自适应灰度优化。
+    """
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # 自适应直方图均衡化
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    enhanced_gray = clahe.apply(gray)
+    
+    # 膨胀操作以增强文字
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2,2))
+    dilated = cv2.dilate(enhanced_gray, kernel, iterations=1)
+    
+    # 转换回BGR
+    enhanced_image = cv2.cvtColor(dilated, cv2.COLOR_GRAY2BGR)
+    
+    return enhanced_image
+
+def convert_grayscale(image: np.ndarray) -> np.ndarray:
+    """
+    将图像转换为灰度图像。
+    """
+    grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    return cv2.cvtColor(grayscale, cv2.COLOR_GRAY2BGR)
+
+def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 255, 255), progress_callback=None, current_page_callback=None, selected_features=None):
+    """
+    校正 PDF 文件中的图像倾斜，并根据用户选择应用图像处理功能。
     """
     # 打开 PDF 文件，添加错误处理
     try:
@@ -45,9 +91,15 @@ def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 
     try:
         total_pages = len(pdf_document)
         for page_num in range(total_pages):
+            # 发送当前页数
+            if current_page_callback:
+                current_page_callback(page_num + 1)
+
+            # 基本进度计算
+            base_progress = int((page_num / total_pages) * 100)
             if progress_callback:
-                progress_percentage = int((page_num / total_pages) * 100)
-                progress_callback.emit(progress_percentage)
+                progress_callback(base_progress)
+
             # 将页面渲染为图像
             page = pdf_document.load_page(page_num)
             pix = page.get_pixmap(dpi=dpi)  # 使用自定义 DPI
@@ -57,7 +109,26 @@ def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 
             if img.ndim == 2:
                 img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
-            # 将图像转换为灰度图像并确定倾斜角度
+            # 图像预处理
+            # 1. 根据用户选择移除水印
+            if selected_features.get("remove_watermark", False):
+                img = remove_watermark(img)
+                if progress_callback:
+                    progress_callback(base_progress + 5)
+
+            # 2. 根据用户选择增强图像
+            if selected_features.get("enhance_image", False):
+                img = enhance_image(img)
+                if progress_callback:
+                    progress_callback(base_progress + 10)
+
+            # 3. 根据用户选择转换为灰度图像
+            if selected_features.get("convert_grayscale", False):
+                img = convert_grayscale(img)
+                if progress_callback:
+                    progress_callback(base_progress + 15)
+
+            # 转换为灰度图像并确定倾斜角度
             grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             angle = determine_skew(grayscale)
 
@@ -70,21 +141,24 @@ def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 
                 logging.info(f"No skew detected on page {page_num + 1}")
                 corrected_img = img
 
+            if progress_callback:
+                progress_callback(base_progress + 20)
+
             # 保存校正后的图像到临时文件夹
             corrected_img_path = os.path.join(temp_folder, f"page_{page_num}.png")
             cv2.imwrite(corrected_img_path, corrected_img)
             output_images.append(corrected_img_path)
 
+            if progress_callback:
+                progress_callback(base_progress + 25)
+
         if progress_callback:
-            progress_callback.emit(90)
+            progress_callback(100)
 
         # 使用 PIL 将所有校正后的图像重新保存为 PDF
         image_list = [Image.open(img_path).convert("RGB") for img_path in output_images]
         if image_list:
             image_list[0].save(output_pdf_path, save_all=True, append_images=image_list[1:])
-
-        if progress_callback:
-            progress_callback.emit(100)
 
     except Exception as e:
         logging.error(f"Error during deskewing PDF: {e}")
