@@ -8,6 +8,7 @@ import fitz  # PyMuPDF
 import os
 
 from deskew_tool.deskew_pdf import deskew_pdf
+import shutil
 
 class WorkerThread(QThread):
     progress = pyqtSignal(int)
@@ -25,6 +26,7 @@ class WorkerThread(QThread):
         self.dpi = dpi
         self.background_color = background_color
         self.selected_features = selected_features  # 用户选择的图像处理功能
+        self._is_running = True  # 标志位
 
     def run(self):
         try:
@@ -53,6 +55,8 @@ class WorkerThread(QThread):
                 background_color=self.background_color,
                 progress_callback=self.update_progress_with_status,
                 current_page_callback=self.update_current_page_status,
+                status_callback=self.update_status,  # 传递status_callback
+                is_running_callback=self.is_running,  # 传递is_running_callback
                 selected_features=self.selected_features
             )
 
@@ -74,6 +78,18 @@ class WorkerThread(QThread):
         except Exception as e:
             logging.error(f"Processing error: {e}")
             self.error.emit(str(e))
+        finally:
+            # 清理临时文件
+            if os.path.exists(temp_before):
+                try:
+                    os.remove(temp_before)
+                except Exception as e:
+                    logging.warning(f"Unable to remove temporary file {temp_before}: {e}")
+            if os.path.exists(temp_after):
+                try:
+                    os.remove(temp_after)
+                except Exception as e:
+                    logging.warning(f"Unable to remove temporary file {temp_after}: {e}")
 
     def update_progress_with_status(self, value):
         """更新进度并发送状态信息"""
@@ -96,3 +112,11 @@ class WorkerThread(QThread):
     def update_current_page_status(self, current_page):
         """发送当前处理的页数"""
         self.current_page.emit(current_page)
+
+    def is_running(self):
+        """返回当前线程是否在运行"""
+        return self._is_running
+
+    def stop(self):
+        """停止线程"""
+        self._is_running = False
