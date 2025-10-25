@@ -205,7 +205,6 @@ def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 
 
             # 2. 根据用户选择增强图像
             if selected_features.get("enhance_image", False):
-                contrast_enhancement = selected_features.get("contrast_enhancement", True)
                 contrast_level = selected_features.get("contrast_level", 2)
                 denoising_method = selected_features.get("denoising_method", "Gaussian")
                 denoising_kernel = selected_features.get("denoising_kernel", 3)

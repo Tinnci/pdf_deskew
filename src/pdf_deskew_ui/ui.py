@@ -9,7 +9,8 @@ from typing import Dict, Tuple
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QFileDialog, QMessageBox, QCheckBox, QSpinBox,
-    QComboBox, QProgressBar, QColorDialog, QApplication, QTextEdit, QSlider, QGroupBox
+    QComboBox, QProgressBar, QColorDialog, QApplication, QTextEdit, QSlider,
+    QTabWidget
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap
@@ -111,6 +112,11 @@ class MainWindow(QMainWindow):
                 "enhance_image": "Enhance Image",
                 "convert_grayscale": "Convert to Grayscale",
                 "log_label": "Log:",
+                # Tab页标签
+                "tab_basic": "Basic Settings",
+                "tab_watermark": "Watermark Removal",
+                "tab_enhance": "Image Enhancement",
+                "tab_grayscale": "Grayscale Conversion",
                 # 新增翻译键
                 "watermark_removal_method": "Watermark Removal Method:",
                 "inpainting_algorithm": "Inpainting Algorithm:",
@@ -194,6 +200,11 @@ class MainWindow(QMainWindow):
                 "enhance_image": "增强图像",
                 "convert_grayscale": "转换为灰度图像",
                 "log_label": "日志:",
+                # Tab页标签
+                "tab_basic": "基础设置",
+                "tab_watermark": "水印移除",
+                "tab_enhance": "图像增强",
+                "tab_grayscale": "灰度转换",
                 # 新增翻译键
                 "watermark_removal_method": "水印移除方法:",
                 "inpainting_algorithm": "修复算法:",
@@ -265,6 +276,13 @@ class MainWindow(QMainWindow):
         # 更新日志标签
         self.log_label.setText(t.get("log_label", "Log:"))
 
+        # 更新标签页标题
+        if hasattr(self, 'tabs'):
+            self.tabs.setTabText(0, t.get("tab_basic", "Basic Settings"))
+            self.tabs.setTabText(1, t.get("tab_watermark", "Watermark Removal"))
+            self.tabs.setTabText(2, t.get("tab_enhance", "Image Enhancement"))
+            self.tabs.setTabText(3, t.get("tab_grayscale", "Grayscale Conversion"))
+
         # 更新水印移除参数
         self.watermark_removal_method_label.setText(t.get("watermark_removal_method", "Watermark Removal Method:"))
         self.inpainting_algorithm_label.setText(t.get("inpainting_algorithm", "Inpainting Algorithm:"))
@@ -286,50 +304,56 @@ class MainWindow(QMainWindow):
         self.grayscale_smoothing_kernel_label.setText(t.get("grayscale_smoothing_kernel", "Smoothing Kernel Size:"))
 
     def init_ui(self):
-        """初始化用户界面"""
+        """初始化用户界面 - 使用标签页优化布局"""
         # 设置允许拖放
         self.setAcceptDrops(True)
 
         # 主布局
         main_layout = QVBoxLayout()
 
-        # 拖放提示
+        # 顶部：拖放提示
         self.drag_drop_label = QLabel("Drag and drop a PDF file here")
         self.drag_drop_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.drag_drop_label.setStyleSheet("border: 2px dashed #aaa; padding: 20px;")
         main_layout.addWidget(self.drag_drop_label)
 
-        # 输入 PDF
+        # 文件选择部分
         input_layout = QHBoxLayout()
         self.input_label = QLabel()
         self.input_line = QLineEdit()
         self.input_browse = QPushButton()
-        self.input_browse.setIcon(QIcon.fromTheme("document-open"))  # 添加图标
+        self.input_browse.setIcon(QIcon.fromTheme("document-open"))
         self.input_browse.clicked.connect(self.browse_input)
         input_layout.addWidget(self.input_label)
         input_layout.addWidget(self.input_line)
         input_layout.addWidget(self.input_browse)
         main_layout.addLayout(input_layout)
 
-        # 输出 PDF
         output_layout = QHBoxLayout()
         self.output_label = QLabel()
         self.output_line = QLineEdit()
         self.output_browse = QPushButton()
-        self.output_browse.setIcon(QIcon.fromTheme("document-save"))  # 添加图标
+        self.output_browse.setIcon(QIcon.fromTheme("document-save"))
         self.output_browse.clicked.connect(self.browse_output)
         output_layout.addWidget(self.output_label)
         output_layout.addWidget(self.output_line)
         output_layout.addWidget(self.output_browse)
         main_layout.addLayout(output_layout)
 
-        # 默认设置复选框
+        # ===== 使用标签页组织设置 =====
+        self.tabs = QTabWidget()  # 保存标签页引用以便后续更新
+
+        # ===== 标签页 1: 基础设置 =====
+        basic_widget = QWidget()
+        basic_layout = QVBoxLayout()
+
+        # 默认设置
         self.default_checkbox = QCheckBox()
         self.default_checkbox.setChecked(True)
         self.default_checkbox.stateChanged.connect(self.toggle_settings)
-        main_layout.addWidget(self.default_checkbox)
+        basic_layout.addWidget(self.default_checkbox)
 
-        # 自定义 DPI
+        # DPI 设置
         dpi_layout = QHBoxLayout()
         self.dpi_label = QLabel()
         self.dpi_spin = QSpinBox()
@@ -338,7 +362,8 @@ class MainWindow(QMainWindow):
         self.dpi_spin.setEnabled(False)
         dpi_layout.addWidget(self.dpi_label)
         dpi_layout.addWidget(self.dpi_spin)
-        main_layout.addLayout(dpi_layout)
+        dpi_layout.addStretch()
+        basic_layout.addLayout(dpi_layout)
 
         # 背景颜色
         bg_layout = QHBoxLayout()
@@ -347,77 +372,89 @@ class MainWindow(QMainWindow):
         self.bg_combo.setEnabled(False)
         self.bg_combo.currentIndexChanged.connect(self.bg_selection_changed)
         self.bg_button = QPushButton()
-        self.bg_button.setIcon(QIcon.fromTheme("color-picker"))  # 添加图标
+        self.bg_button.setIcon(QIcon.fromTheme("color-picker"))
         self.bg_button.setEnabled(False)
         self.bg_button.clicked.connect(self.choose_color)
         bg_layout.addWidget(self.bg_label)
         bg_layout.addWidget(self.bg_combo)
         bg_layout.addWidget(self.bg_button)
-        main_layout.addLayout(bg_layout)
+        bg_layout.addStretch()
+        basic_layout.addLayout(bg_layout)
 
-        # 图像处理选项
-        self.image_processing_group = QGroupBox("Image Processing Options")
-        image_processing_layout = QVBoxLayout()
+        basic_layout.addStretch()
+        basic_widget.setLayout(basic_layout)
+        self.tabs.addTab(basic_widget, "Basic Settings")
 
-        # 移除水印复选框
+        # ===== 标签页 2: 水印移除 =====
+        watermark_widget = QWidget()
+        watermark_layout = QVBoxLayout()
+
         self.remove_watermark_checkbox = QCheckBox()
-        self.remove_watermark_checkbox.setChecked(True)  # 默认选中
+        self.remove_watermark_checkbox.setChecked(True)
         self.remove_watermark_checkbox.stateChanged.connect(self.toggle_watermark_options)
-        image_processing_layout.addWidget(self.remove_watermark_checkbox)
+        watermark_layout.addWidget(self.remove_watermark_checkbox)
 
-        # 水印移除参数
-        watermark_removal_layout = QHBoxLayout()
+        watermark_method_layout = QHBoxLayout()
         self.watermark_removal_method_label = QLabel()
         self.watermark_removal_method_combo = QComboBox()
         self.watermark_removal_method_combo.addItems(["Inpainting"])
         self.watermark_removal_method_combo.setEnabled(False)
-        watermark_removal_layout.addWidget(self.watermark_removal_method_label)
-        watermark_removal_layout.addWidget(self.watermark_removal_method_combo)
-        image_processing_layout.addLayout(watermark_removal_layout)
+        watermark_method_layout.addWidget(self.watermark_removal_method_label)
+        watermark_method_layout.addWidget(self.watermark_removal_method_combo)
+        watermark_method_layout.addStretch()
+        watermark_layout.addLayout(watermark_method_layout)
 
-        inpainting_algorithm_layout = QHBoxLayout()
+        inpainting_layout = QHBoxLayout()
         self.inpainting_algorithm_label = QLabel()
         self.inpainting_algorithm_combo = QComboBox()
         self.inpainting_algorithm_combo.addItems(["Telea", "Navier-Stokes"])
         self.inpainting_algorithm_combo.setEnabled(False)
-        inpainting_algorithm_layout.addWidget(self.inpainting_algorithm_label)
-        inpainting_algorithm_layout.addWidget(self.inpainting_algorithm_combo)
-        image_processing_layout.addLayout(inpainting_algorithm_layout)
+        inpainting_layout.addWidget(self.inpainting_algorithm_label)
+        inpainting_layout.addWidget(self.inpainting_algorithm_combo)
+        inpainting_layout.addStretch()
+        watermark_layout.addLayout(inpainting_layout)
 
-        watermark_threshold_layout = QHBoxLayout()
+        threshold_layout = QHBoxLayout()
         self.watermark_mask_threshold_label = QLabel()
         self.watermark_mask_threshold_spin = QSpinBox()
         self.watermark_mask_threshold_spin.setRange(0, 255)
         self.watermark_mask_threshold_spin.setValue(127)
         self.watermark_mask_threshold_spin.setEnabled(False)
-        watermark_threshold_layout.addWidget(self.watermark_mask_threshold_label)
-        watermark_threshold_layout.addWidget(self.watermark_mask_threshold_spin)
-        image_processing_layout.addLayout(watermark_threshold_layout)
+        threshold_layout.addWidget(self.watermark_mask_threshold_label)
+        threshold_layout.addWidget(self.watermark_mask_threshold_spin)
+        threshold_layout.addStretch()
+        watermark_layout.addLayout(threshold_layout)
 
-        # 图像增强复选框
+        watermark_layout.addStretch()
+        watermark_widget.setLayout(watermark_layout)
+        self.tabs.addTab(watermark_widget, "Watermark Removal")
+
+        # ===== 标签页 3: 图像增强 =====
+        enhance_widget = QWidget()
+        enhance_layout = QVBoxLayout()
+
         self.enhance_image_checkbox = QCheckBox()
-        self.enhance_image_checkbox.setChecked(True)  # 默认选中
+        self.enhance_image_checkbox.setChecked(True)
         self.enhance_image_checkbox.stateChanged.connect(self.toggle_enhance_options)
-        image_processing_layout.addWidget(self.enhance_image_checkbox)
+        enhance_layout.addWidget(self.enhance_image_checkbox)
 
-        # 对比度增强复选框
+        # 对比度增强
         self.contrast_enhancement_checkbox = QCheckBox()
-        self.contrast_enhancement_checkbox.setChecked(True)  # 默认选中
+        self.contrast_enhancement_checkbox.setChecked(True)
         self.contrast_enhancement_checkbox.stateChanged.connect(self.toggle_contrast_enhancement_options)
-        image_processing_layout.addWidget(self.contrast_enhancement_checkbox)
+        enhance_layout.addWidget(self.contrast_enhancement_checkbox)
 
-        # 对比度调整
         contrast_layout = QHBoxLayout()
         self.contrast_level_label = QLabel()
         self.contrast_level_slider = QSlider(Qt.Orientation.Horizontal)
-        self.contrast_level_slider.setRange(1, 3)  # 1: Low, 2: Medium, 3: High
+        self.contrast_level_slider.setRange(1, 3)
         self.contrast_level_slider.setValue(2)
         self.contrast_level_slider.setEnabled(False)
         contrast_layout.addWidget(self.contrast_level_label)
         contrast_layout.addWidget(self.contrast_level_slider)
-        image_processing_layout.addLayout(contrast_layout)
+        enhance_layout.addLayout(contrast_layout)
 
-        # 去噪方法
+        # 去噪
         denoising_layout = QHBoxLayout()
         self.denoising_method_label = QLabel()
         self.denoising_method_combo = QComboBox()
@@ -425,141 +462,345 @@ class MainWindow(QMainWindow):
         self.denoising_method_combo.setEnabled(False)
         denoising_layout.addWidget(self.denoising_method_label)
         denoising_layout.addWidget(self.denoising_method_combo)
-        image_processing_layout.addLayout(denoising_layout)
+        denoising_layout.addStretch()
+        enhance_layout.addLayout(denoising_layout)
 
-        # 去噪内核大小
-        denoising_kernel_layout = QHBoxLayout()
+        kernel_layout = QHBoxLayout()
         self.denoising_kernel_label = QLabel()
         self.denoising_kernel_spin = QSpinBox()
         self.denoising_kernel_spin.setRange(1, 31)
         self.denoising_kernel_spin.setValue(3)
         self.denoising_kernel_spin.setEnabled(False)
-        denoising_kernel_layout.addWidget(self.denoising_kernel_label)
-        denoising_kernel_layout.addWidget(self.denoising_kernel_spin)
-        image_processing_layout.addLayout(denoising_kernel_layout)
+        kernel_layout.addWidget(self.denoising_kernel_label)
+        kernel_layout.addWidget(self.denoising_kernel_spin)
+        kernel_layout.addStretch()
+        enhance_layout.addLayout(kernel_layout)
 
-        # 锐化复选框
+        # 锐化
         self.sharpening_checkbox = QCheckBox()
-        self.sharpening_checkbox.setChecked(False)  # 默认不选中
+        self.sharpening_checkbox.setChecked(False)
         self.sharpening_checkbox.stateChanged.connect(self.toggle_sharpening_options)
-        image_processing_layout.addWidget(self.sharpening_checkbox)
+        enhance_layout.addWidget(self.sharpening_checkbox)
 
-        # 锐化强度
-        sharpening_strength_layout = QHBoxLayout()
+        sharp_layout = QHBoxLayout()
         self.sharpening_strength_label = QLabel()
         self.sharpening_strength_slider = QSlider(Qt.Orientation.Horizontal)
-        self.sharpening_strength_slider.setRange(1, 5)  # 1: Mild, 5: Strong
+        self.sharpening_strength_slider.setRange(1, 5)
         self.sharpening_strength_slider.setValue(3)
         self.sharpening_strength_slider.setEnabled(False)
-        sharpening_strength_layout.addWidget(self.sharpening_strength_label)
-        sharpening_strength_layout.addWidget(self.sharpening_strength_slider)
-        image_processing_layout.addLayout(sharpening_strength_layout)
+        sharp_layout.addWidget(self.sharpening_strength_label)
+        sharp_layout.addWidget(self.sharpening_strength_slider)
+        enhance_layout.addLayout(sharp_layout)
 
-        # 灰度转换复选框
+        enhance_layout.addStretch()
+        enhance_widget.setLayout(enhance_layout)
+        self.tabs.addTab(enhance_widget, "Image Enhancement")
+
+        # ===== 标签页 4: 灰度转换 =====
+        grayscale_widget = QWidget()
+        grayscale_layout = QVBoxLayout()
+
         self.convert_grayscale_checkbox = QCheckBox()
-        self.convert_grayscale_checkbox.setChecked(False)  # 默认不选中
+        self.convert_grayscale_checkbox.setChecked(False)
         self.convert_grayscale_checkbox.stateChanged.connect(self.toggle_grayscale_options)
-        image_processing_layout.addWidget(self.convert_grayscale_checkbox)
+        grayscale_layout.addWidget(self.convert_grayscale_checkbox)
 
-        # 灰度量化等级
-        grayscale_quant_layout = QHBoxLayout()
+        quant_layout = QHBoxLayout()
         self.grayscale_quantization_label = QLabel()
         self.grayscale_quant_levels_label = QLabel()
         self.grayscale_quant_levels_spin = QSpinBox()
         self.grayscale_quant_levels_spin.setRange(2, 256)
         self.grayscale_quant_levels_spin.setValue(64)
         self.grayscale_quant_levels_spin.setEnabled(False)
-        grayscale_quant_layout.addWidget(self.grayscale_quantization_label)
-        grayscale_quant_layout.addWidget(self.grayscale_quant_levels_label)
-        grayscale_quant_layout.addWidget(self.grayscale_quant_levels_spin)
-        image_processing_layout.addLayout(grayscale_quant_layout)
+        quant_layout.addWidget(self.grayscale_quantization_label)
+        quant_layout.addWidget(self.grayscale_quant_levels_label)
+        quant_layout.addWidget(self.grayscale_quant_levels_spin)
+        quant_layout.addStretch()
+        grayscale_layout.addLayout(quant_layout)
 
-        # 灰度缩放
-        grayscale_scaling_layout = QHBoxLayout()
+        scale_layout = QHBoxLayout()
         self.grayscale_scaling_label = QLabel()
         self.grayscale_scale_factor_label = QLabel()
         self.grayscale_scale_factor_spin = QSpinBox()
         self.grayscale_scale_factor_spin.setRange(1, 5)
         self.grayscale_scale_factor_spin.setValue(1)
         self.grayscale_scale_factor_spin.setEnabled(False)
-        grayscale_scaling_layout.addWidget(self.grayscale_scaling_label)
-        grayscale_scaling_layout.addWidget(self.grayscale_scale_factor_label)
-        grayscale_scaling_layout.addWidget(self.grayscale_scale_factor_spin)
-        image_processing_layout.addLayout(grayscale_scaling_layout)
+        scale_layout.addWidget(self.grayscale_scaling_label)
+        scale_layout.addWidget(self.grayscale_scale_factor_label)
+        scale_layout.addWidget(self.grayscale_scale_factor_spin)
+        scale_layout.addStretch()
+        grayscale_layout.addLayout(scale_layout)
 
-        # 灰度平滑方法
-        grayscale_smoothing_layout = QHBoxLayout()
+        smooth_method_layout = QHBoxLayout()
         self.grayscale_smoothing_method_label = QLabel()
         self.grayscale_smoothing_method_combo = QComboBox()
         self.grayscale_smoothing_method_combo.addItems(["Gaussian", "Median"])
         self.grayscale_smoothing_method_combo.setEnabled(False)
-        grayscale_smoothing_layout.addWidget(self.grayscale_smoothing_method_label)
-        grayscale_smoothing_layout.addWidget(self.grayscale_smoothing_method_combo)
-        image_processing_layout.addLayout(grayscale_smoothing_layout)
+        smooth_method_layout.addWidget(self.grayscale_smoothing_method_label)
+        smooth_method_layout.addWidget(self.grayscale_smoothing_method_combo)
+        smooth_method_layout.addStretch()
+        grayscale_layout.addLayout(smooth_method_layout)
 
-        # 灰度平滑内核大小
-        grayscale_smoothing_kernel_layout = QHBoxLayout()
+        smooth_kernel_layout = QHBoxLayout()
         self.grayscale_smoothing_kernel_label = QLabel()
         self.grayscale_smoothing_kernel_spin = QSpinBox()
         self.grayscale_smoothing_kernel_spin.setRange(1, 31)
         self.grayscale_smoothing_kernel_spin.setValue(3)
         self.grayscale_smoothing_kernel_spin.setEnabled(False)
-        grayscale_smoothing_kernel_layout.addWidget(self.grayscale_smoothing_kernel_label)
-        grayscale_smoothing_kernel_layout.addWidget(self.grayscale_smoothing_kernel_spin)
-        image_processing_layout.addLayout(grayscale_smoothing_kernel_layout)
+        smooth_kernel_layout.addWidget(self.grayscale_smoothing_kernel_label)
+        smooth_kernel_layout.addWidget(self.grayscale_smoothing_kernel_spin)
+        smooth_kernel_layout.addStretch()
+        grayscale_layout.addLayout(smooth_kernel_layout)
 
-        self.image_processing_group.setLayout(image_processing_layout)
-        main_layout.addWidget(self.image_processing_group)
+        grayscale_layout.addStretch()
+        grayscale_widget.setLayout(grayscale_layout)
+        self.tabs.addTab(grayscale_widget, "Grayscale Conversion")
 
-        # 语言选择
-        language_layout = QHBoxLayout()
+        main_layout.addWidget(self.tabs)
+        basic_layout.addLayout(dpi_layout)
+
+        # 背景颜色
+        bg_layout = QHBoxLayout()
+        self.bg_label = QLabel()
+        self.bg_combo = QComboBox()
+        self.bg_combo.setEnabled(False)
+        self.bg_combo.currentIndexChanged.connect(self.bg_selection_changed)
+        self.bg_button = QPushButton()
+        self.bg_button.setIcon(QIcon.fromTheme("color-picker"))
+        self.bg_button.setEnabled(False)
+        self.bg_button.clicked.connect(self.choose_color)
+        bg_layout.addWidget(self.bg_label)
+        bg_layout.addWidget(self.bg_combo)
+        bg_layout.addWidget(self.bg_button)
+        bg_layout.addStretch()
+        basic_layout.addLayout(bg_layout)
+
+        basic_layout.addStretch()
+        basic_widget.setLayout(basic_layout)
+        self.tabs.addTab(basic_widget, "Basic Settings")
+
+        # ===== 标签页 2: 水印移除 =====
+        watermark_widget = QWidget()
+        watermark_layout = QVBoxLayout()
+
+        self.remove_watermark_checkbox = QCheckBox()
+        self.remove_watermark_checkbox.setChecked(True)
+        self.remove_watermark_checkbox.stateChanged.connect(self.toggle_watermark_options)
+        watermark_layout.addWidget(self.remove_watermark_checkbox)
+
+        watermark_method_layout = QHBoxLayout()
+        self.watermark_removal_method_label = QLabel()
+        self.watermark_removal_method_combo = QComboBox()
+        self.watermark_removal_method_combo.addItems(["Inpainting"])
+        self.watermark_removal_method_combo.setEnabled(False)
+        watermark_method_layout.addWidget(self.watermark_removal_method_label)
+        watermark_method_layout.addWidget(self.watermark_removal_method_combo)
+        watermark_method_layout.addStretch()
+        watermark_layout.addLayout(watermark_method_layout)
+
+        inpainting_layout = QHBoxLayout()
+        self.inpainting_algorithm_label = QLabel()
+        self.inpainting_algorithm_combo = QComboBox()
+        self.inpainting_algorithm_combo.addItems(["Telea", "Navier-Stokes"])
+        self.inpainting_algorithm_combo.setEnabled(False)
+        inpainting_layout.addWidget(self.inpainting_algorithm_label)
+        inpainting_layout.addWidget(self.inpainting_algorithm_combo)
+        inpainting_layout.addStretch()
+        watermark_layout.addLayout(inpainting_layout)
+
+        threshold_layout = QHBoxLayout()
+        self.watermark_mask_threshold_label = QLabel()
+        self.watermark_mask_threshold_spin = QSpinBox()
+        self.watermark_mask_threshold_spin.setRange(0, 255)
+        self.watermark_mask_threshold_spin.setValue(127)
+        self.watermark_mask_threshold_spin.setEnabled(False)
+        threshold_layout.addWidget(self.watermark_mask_threshold_label)
+        threshold_layout.addWidget(self.watermark_mask_threshold_spin)
+        threshold_layout.addStretch()
+        watermark_layout.addLayout(threshold_layout)
+
+        watermark_layout.addStretch()
+        watermark_widget.setLayout(watermark_layout)
+        self.tabs.addTab(watermark_widget, "Watermark Removal")
+
+        # ===== 标签页 3: 图像增强 =====
+        enhance_widget = QWidget()
+        enhance_layout = QVBoxLayout()
+
+        self.enhance_image_checkbox = QCheckBox()
+        self.enhance_image_checkbox.setChecked(True)
+        self.enhance_image_checkbox.stateChanged.connect(self.toggle_enhance_options)
+        enhance_layout.addWidget(self.enhance_image_checkbox)
+
+        # 对比度增强
+        self.contrast_enhancement_checkbox = QCheckBox()
+        self.contrast_enhancement_checkbox.setChecked(True)
+        self.contrast_enhancement_checkbox.stateChanged.connect(self.toggle_contrast_enhancement_options)
+        enhance_layout.addWidget(self.contrast_enhancement_checkbox)
+
+        contrast_layout = QHBoxLayout()
+        self.contrast_level_label = QLabel()
+        self.contrast_level_slider = QSlider(Qt.Orientation.Horizontal)
+        self.contrast_level_slider.setRange(1, 3)
+        self.contrast_level_slider.setValue(2)
+        self.contrast_level_slider.setEnabled(False)
+        contrast_layout.addWidget(self.contrast_level_label)
+        contrast_layout.addWidget(self.contrast_level_slider)
+        enhance_layout.addLayout(contrast_layout)
+
+        # 去噪
+        denoising_layout = QHBoxLayout()
+        self.denoising_method_label = QLabel()
+        self.denoising_method_combo = QComboBox()
+        self.denoising_method_combo.addItems(["Gaussian", "Median"])
+        self.denoising_method_combo.setEnabled(False)
+        denoising_layout.addWidget(self.denoising_method_label)
+        denoising_layout.addWidget(self.denoising_method_combo)
+        denoising_layout.addStretch()
+        enhance_layout.addLayout(denoising_layout)
+
+        kernel_layout = QHBoxLayout()
+        self.denoising_kernel_label = QLabel()
+        self.denoising_kernel_spin = QSpinBox()
+        self.denoising_kernel_spin.setRange(1, 31)
+        self.denoising_kernel_spin.setValue(3)
+        self.denoising_kernel_spin.setEnabled(False)
+        kernel_layout.addWidget(self.denoising_kernel_label)
+        kernel_layout.addWidget(self.denoising_kernel_spin)
+        kernel_layout.addStretch()
+        enhance_layout.addLayout(kernel_layout)
+
+        # 锐化
+        self.sharpening_checkbox = QCheckBox()
+        self.sharpening_checkbox.setChecked(False)
+        self.sharpening_checkbox.stateChanged.connect(self.toggle_sharpening_options)
+        enhance_layout.addWidget(self.sharpening_checkbox)
+
+        sharp_layout = QHBoxLayout()
+        self.sharpening_strength_label = QLabel()
+        self.sharpening_strength_slider = QSlider(Qt.Orientation.Horizontal)
+        self.sharpening_strength_slider.setRange(1, 5)
+        self.sharpening_strength_slider.setValue(3)
+        self.sharpening_strength_slider.setEnabled(False)
+        sharp_layout.addWidget(self.sharpening_strength_label)
+        sharp_layout.addWidget(self.sharpening_strength_slider)
+        enhance_layout.addLayout(sharp_layout)
+
+        enhance_layout.addStretch()
+        enhance_widget.setLayout(enhance_layout)
+        self.tabs.addTab(enhance_widget, "Image Enhancement")
+
+        # ===== 标签页 4: 灰度转换 =====
+        grayscale_widget = QWidget()
+        grayscale_layout = QVBoxLayout()
+
+        self.convert_grayscale_checkbox = QCheckBox()
+        self.convert_grayscale_checkbox.setChecked(False)
+        self.convert_grayscale_checkbox.stateChanged.connect(self.toggle_grayscale_options)
+        grayscale_layout.addWidget(self.convert_grayscale_checkbox)
+
+        quant_layout = QHBoxLayout()
+        self.grayscale_quantization_label = QLabel()
+        self.grayscale_quant_levels_label = QLabel()
+        self.grayscale_quant_levels_spin = QSpinBox()
+        self.grayscale_quant_levels_spin.setRange(2, 256)
+        self.grayscale_quant_levels_spin.setValue(64)
+        self.grayscale_quant_levels_spin.setEnabled(False)
+        quant_layout.addWidget(self.grayscale_quantization_label)
+        quant_layout.addWidget(self.grayscale_quant_levels_label)
+        quant_layout.addWidget(self.grayscale_quant_levels_spin)
+        quant_layout.addStretch()
+        grayscale_layout.addLayout(quant_layout)
+
+        scale_layout = QHBoxLayout()
+        self.grayscale_scaling_label = QLabel()
+        self.grayscale_scale_factor_label = QLabel()
+        self.grayscale_scale_factor_spin = QSpinBox()
+        self.grayscale_scale_factor_spin.setRange(1, 5)
+        self.grayscale_scale_factor_spin.setValue(1)
+        self.grayscale_scale_factor_spin.setEnabled(False)
+        scale_layout.addWidget(self.grayscale_scaling_label)
+        scale_layout.addWidget(self.grayscale_scale_factor_label)
+        scale_layout.addWidget(self.grayscale_scale_factor_spin)
+        scale_layout.addStretch()
+        grayscale_layout.addLayout(scale_layout)
+
+        smooth_method_layout = QHBoxLayout()
+        self.grayscale_smoothing_method_label = QLabel()
+        self.grayscale_smoothing_method_combo = QComboBox()
+        self.grayscale_smoothing_method_combo.addItems(["Gaussian", "Median"])
+        self.grayscale_smoothing_method_combo.setEnabled(False)
+        smooth_method_layout.addWidget(self.grayscale_smoothing_method_label)
+        smooth_method_layout.addWidget(self.grayscale_smoothing_method_combo)
+        smooth_method_layout.addStretch()
+        grayscale_layout.addLayout(smooth_method_layout)
+
+        smooth_kernel_layout = QHBoxLayout()
+        self.grayscale_smoothing_kernel_label = QLabel()
+        self.grayscale_smoothing_kernel_spin = QSpinBox()
+        self.grayscale_smoothing_kernel_spin.setRange(1, 31)
+        self.grayscale_smoothing_kernel_spin.setValue(3)
+        self.grayscale_smoothing_kernel_spin.setEnabled(False)
+        smooth_kernel_layout.addWidget(self.grayscale_smoothing_kernel_label)
+        smooth_kernel_layout.addWidget(self.grayscale_smoothing_kernel_spin)
+        smooth_kernel_layout.addStretch()
+        grayscale_layout.addLayout(smooth_kernel_layout)
+
+        grayscale_layout.addStretch()
+        grayscale_widget.setLayout(grayscale_layout)
+        self.tabs.addTab(grayscale_widget, "Grayscale Conversion")
+
+        main_layout.addWidget(self.tabs)
+
+        # ===== 底部：语言、主题、按钮 =====
+        settings_layout = QHBoxLayout()
+        
         self.language_label = QLabel()
         self.language_combo = QComboBox()
         self.language_combo.addItems(["English", "中文"])
         self.language_combo.currentIndexChanged.connect(self.change_language)
-        language_layout.addWidget(self.language_label)
-        language_layout.addWidget(self.language_combo)
-        main_layout.addLayout(language_layout)
+        settings_layout.addWidget(self.language_label)
+        settings_layout.addWidget(self.language_combo)
 
-        # 主题选择
-        theme_layout = QHBoxLayout()
+        settings_layout.addSpacing(20)
+
         self.theme_label = QLabel()
         self.theme_combo = QComboBox()
         self.theme_combo.addItems(["Light", "Dark", "Blue"])
         self.theme_combo.currentIndexChanged.connect(self.change_theme)
-        theme_layout.addWidget(self.theme_label)
-        theme_layout.addWidget(self.theme_combo)
-        main_layout.addLayout(theme_layout)
+        settings_layout.addWidget(self.theme_label)
+        settings_layout.addWidget(self.theme_combo)
 
-        # 帮助和退出按钮
-        help_exit_layout = QHBoxLayout()
+        settings_layout.addStretch()
+
         self.help_button = QPushButton()
-        self.help_button.setIcon(QIcon.fromTheme("help-browser"))  # 添加图标
+        self.help_button.setIcon(QIcon.fromTheme("help-browser"))
         self.help_button.clicked.connect(self.show_help)
         self.exit_button = QPushButton()
-        self.exit_button.setIcon(QIcon.fromTheme("application-exit"))  # 添加图标
+        self.exit_button.setIcon(QIcon.fromTheme("application-exit"))
         self.exit_button.clicked.connect(self.close)
-        help_exit_layout.addWidget(self.help_button)
-        help_exit_layout.addStretch()
-        help_exit_layout.addWidget(self.exit_button)
-        main_layout.addLayout(help_exit_layout)
+        settings_layout.addWidget(self.help_button)
+        settings_layout.addWidget(self.exit_button)
 
-        # 添加取消按钮
-        self.cancel_button = QPushButton()
-        t = self.get_translation()
-        self.cancel_button.setText("Cancel" if self.current_language == Language.ENGLISH else "取消")
-        self.cancel_button.setIcon(QIcon.fromTheme("process-stop"))  # 添加图标
-        self.cancel_button.clicked.connect(self.cancel_processing)
-        help_exit_layout.addWidget(self.cancel_button)
-        self.cancel_button.setEnabled(False)  # 默认禁用
+        main_layout.addLayout(settings_layout)
 
-        # 运行按钮
+        # 运行和取消按钮
+        button_layout = QHBoxLayout()
         self.run_button = QPushButton()
-        self.run_button.setIcon(QIcon.fromTheme("media-playback-start"))  # 添加图标
+        self.run_button.setIcon(QIcon.fromTheme("media-playback-start"))
         self.run_button.clicked.connect(self.start_processing)
-        main_layout.addWidget(self.run_button)
+        self.run_button.setMinimumHeight(40)
+        button_layout.addWidget(self.run_button)
 
-        # 进度条和百分比标签
+        self.cancel_button = QPushButton()
+        self.cancel_button.setIcon(QIcon.fromTheme("process-stop"))
+        self.cancel_button.clicked.connect(self.cancel_processing)
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.setMinimumHeight(40)
+        button_layout.addWidget(self.cancel_button)
+        main_layout.addLayout(button_layout)
+
+        # 进度条
         progress_layout = QHBoxLayout()
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
@@ -569,20 +810,20 @@ class MainWindow(QMainWindow):
         progress_layout.addWidget(self.progress_label)
         main_layout.addLayout(progress_layout)
 
-        # 状态标签和状态信息
+        # 状态信息
         status_layout = QHBoxLayout()
-        self.status_label = QLabel()  # 状态标签
-        self.status_text = QLabel()    # 显示状态信息
+        self.status_label = QLabel()
+        self.status_text = QLabel()
         status_layout.addWidget(self.status_label)
         status_layout.addWidget(self.status_text)
         main_layout.addLayout(status_layout)
 
-        # 总页数和当前页数标签
+        # 页数信息
         pages_layout = QHBoxLayout()
-        self.total_pages_label = QLabel()  # 总页数标签
-        self.total_pages_value = QLabel("0")  # 总页数值
-        self.current_page_label = QLabel()  # 当前页数标签
-        self.current_page_value = QLabel("0")  # 当前页数值
+        self.total_pages_label = QLabel()
+        self.total_pages_value = QLabel("0")
+        self.current_page_label = QLabel()
+        self.current_page_value = QLabel("0")
         pages_layout.addWidget(self.total_pages_label)
         pages_layout.addWidget(self.total_pages_value)
         pages_layout.addStretch()
@@ -590,36 +831,38 @@ class MainWindow(QMainWindow):
         pages_layout.addWidget(self.current_page_value)
         main_layout.addLayout(pages_layout)
 
-        # 日志标签和日志窗口
-        log_layout = QHBoxLayout()
-        self.log_label = QLabel()  # 日志标签
+        # 日志窗口
+        self.log_label = QLabel()
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setStyleSheet("background-color: #f0f0f0;")
-        log_layout.addWidget(self.log_label)
-        log_layout.addWidget(self.log_text)
-        main_layout.addLayout(log_layout)
+        self.log_text.setMaximumHeight(100)
+        main_layout.addWidget(self.log_label)
+        main_layout.addWidget(self.log_text)
 
-        # 添加图像展示区域
+        # 处理前后对比
+        images_layout = QHBoxLayout()
         self.before_label = QLabel("Before")
         self.before_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.before_label.setStyleSheet("border: 1px solid black;")
-
+        self.before_label.setMaximumHeight(150)
         self.after_label = QLabel("After")
         self.after_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.after_label.setStyleSheet("border: 1px solid black;")
-
-        images_layout = QHBoxLayout()
+        self.after_label.setMaximumHeight(150)
         images_layout.addWidget(self.before_label)
         images_layout.addWidget(self.after_label)
         main_layout.addLayout(images_layout)
 
-        # 设置主窗口的中心部件
+        # 设置窗口
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
 
-        # 初始化所有UI文本
+        # 设置窗口大小
+        self.resize(900, 700)
+
+        # 初始化文本
         self.init_ui_texts()
 
     def change_language(self, index):
@@ -720,7 +963,6 @@ class MainWindow(QMainWindow):
 
     def toggle_watermark_options(self, state):
         """切换水印移除参数选项"""
-        t = self.get_translation()
         enabled = self.remove_watermark_checkbox.isChecked() and not self.default_checkbox.isChecked()
         self.watermark_removal_method_combo.setEnabled(enabled)
         self.inpainting_algorithm_combo.setEnabled(enabled)
@@ -728,7 +970,6 @@ class MainWindow(QMainWindow):
 
     def toggle_enhance_options(self, state):
         """切换图像增强参数选项"""
-        t = self.get_translation()
         enabled = self.enhance_image_checkbox.isChecked() and not self.default_checkbox.isChecked()
         self.contrast_enhancement_checkbox.setEnabled(enabled)
         self.contrast_level_slider.setEnabled(enabled and self.contrast_enhancement_checkbox.isChecked())
@@ -739,7 +980,6 @@ class MainWindow(QMainWindow):
 
     def toggle_contrast_enhancement_options(self, state):
         """切换对比度增强选项"""
-        t = self.get_translation()
         enabled = self.contrast_enhancement_checkbox.isChecked() and not self.default_checkbox.isChecked()
         self.contrast_level_slider.setEnabled(enabled)
         self.denoising_method_combo.setEnabled(enabled)
@@ -747,13 +987,11 @@ class MainWindow(QMainWindow):
 
     def toggle_sharpening_options(self, state):
         """切换锐化参数选项"""
-        t = self.get_translation()
         enabled = self.sharpening_checkbox.isChecked() and not self.default_checkbox.isChecked() and self.enhance_image_checkbox.isChecked()
         self.sharpening_strength_slider.setEnabled(enabled)
 
     def toggle_grayscale_options(self, state):
         """切换灰度转换参数选项"""
-        t = self.get_translation()
         enabled = self.convert_grayscale_checkbox.isChecked() and not self.default_checkbox.isChecked()
         self.grayscale_quant_levels_spin.setEnabled(enabled)
         self.grayscale_scale_factor_spin.setEnabled(enabled)
@@ -964,7 +1202,6 @@ class MainWindow(QMainWindow):
 
     def dropEvent(self, event: QDropEvent):
         """处理拖放事件"""
-        t = self.get_translation()
         for url in event.mimeData().urls():
             file_path = url.toLocalFile()
             if file_path.lower().endswith(".pdf"):
@@ -986,7 +1223,6 @@ class MainWindow(QMainWindow):
             self.worker.wait()
             self.cancel_button.setEnabled(False)
             self.set_ui_enabled(True)
-            t = self.get_translation()
             self.status_text.setText("Processing cancelled." if self.current_language == Language.ENGLISH else "处理已取消。")
             self.log_text.append("Processing cancelled by user." if self.current_language == Language.ENGLISH else "用户取消了处理。")
             logging.info("Processing cancelled by user.")
