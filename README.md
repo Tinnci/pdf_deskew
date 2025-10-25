@@ -1,174 +1,184 @@
 # PDF Deskew Tool
 
-## 概述
+[中文文档](./README_zh.md)
 
-PDF 校准工具是一个用于校正扫描 PDF 文档中倾斜页面的图形用户界面（GUI）应用程序。它利用 PyMuPDF、OpenCV 和其他强大的库来处理 PDF 的每一页，生成校正后的版本，使文本更加易读和视觉上更平衡。该工具支持多语言界面、主题切换、文件拖放以及详细的进度反馈，旨在提供简洁高效的用户体验。
+## Overview
 
-## 功能特点
+PDF Deskew Tool is a graphical user interface (GUI) application designed to correct skewed pages in scanned PDF documents. It leverages PyMuPDF, OpenCV, and other powerful libraries to process each page of a PDF and generate a corrected version with improved readability and visual balance. The tool supports multi-language interfaces, theme switching, file drag-and-drop, and detailed progress feedback, aiming to provide a simple and efficient user experience.
 
-- **多语言支持**：支持中英文界面，用户可以根据需要切换语言。
-- **文件拖放功能**：通过拖放方式选择输入 PDF 文件，提升操作便捷性。
-- **批量处理**：支持同时处理多个 PDF 文件，提高工作效率。
-- **详细的进度反馈**：显示进度条和百分比，实时了解处理进度。
-- **主题切换**：提供多种界面主题，用户可根据喜好选择不同的外观。
-- **自定义设置**：
-  - **DPI 设置**：自定义渲染 DPI，以满足不同质量需求。
-  - **背景颜色选择**：选择背景颜色或自定义颜色以优化校正效果。
-- **日志记录**：记录处理过程中的重要信息和错误，便于调试和用户反馈。
-- **直观美观的界面**：使用图标和工具提示，提升界面友好性和易用性。
+## Features
 
-## 安装
+- **Multi-language Support**: Supports both Chinese and English interfaces with easy language switching.
+- **Drag-and-Drop File Selection**: Simply drag and drop your PDF files for easy selection.
+- **Batch Processing**: Process multiple PDF files simultaneously to improve work efficiency.
+- **Real-time Progress Feedback**: Display progress bars and percentages to track processing status.
+- **Theme Switching**: Offers multiple interface themes for personalized appearance.
+- **Customizable Settings**:
+  - **DPI Configuration**: Customize rendering DPI to meet different quality requirements.
+  - **Background Color Selection**: Choose or customize background colors to optimize correction results.
+  - **Image Enhancement**: Remove watermarks, enhance contrast, denoise, and sharpen images.
+- **Logging**: Records important information and errors during processing for debugging and user feedback.
+- **Intuitive Interface**: User-friendly design with icons and tooltips for enhanced usability.
 
-要使用此工具，您需要安装 [PDM](https://pdm.fming.dev/latest/) 来管理依赖项。
+## Installation
 
-### 第一步：克隆仓库
+### Recommended: Using uv
+
+```bash
+uv tool install pdf-deskew
+```
+
+This will automatically create two executable commands: `pdf-deskew` (GUI) and `pdf-deskew-cli` (CLI).
+
+### Alternative: Using pip
+
+```bash
+pip install pdf-deskew
+```
+
+### From Source (Development)
 
 ```bash
 git clone https://github.com/tinnci/pdf_deskew.git
 cd pdf_deskew
+
+# Create virtual environment
+uv venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install in development mode
+uv pip install -e .
 ```
 
-### 第二步：安装依赖项
+## Dependencies
 
-使用 PDM 从 `pyproject.toml` 中安装所需的依赖项：
+The tool automatically installs the following dependencies:
+
+- **PyQt6** (>=6.7.1): GUI framework
+- **PyMuPDF** (>=1.24.13): PDF processing
+- **OpenCV** (>=4.10.0.84): Image processing
+- **Pillow** (>=11.0.0): Image manipulation
+- **numpy** (>=2.1.2): Numerical computing
+- **deskew** (>=1.5.1): Skew detection
+- **qt-material** (>=2.14): Theme support
+- **tqdm** (>=4.66.6): Progress bars
+
+## Usage
+
+### GUI Application
+
+Start the application:
 
 ```bash
-pdm install
+pdf-deskew
 ```
 
-这将安装所有必要的依赖项，包括 `PyQt6`、`PyMuPDF`、`OpenCV`、`Pillow`、`deskew`、`qt-material` 等。
+**Interface Guide**:
 
-## 使用方法
+1. **File Selection**:
+   - **Input PDF**: Click "Browse" button or drag-and-drop a PDF file
+   - **Output PDF**: Specify save location (default: `input_filename_deskewed.pdf`)
 
-使用 PDM 运行 GUI 应用程序：
+2. **Processing Options**:
+   - **Use Recommended Settings**: DPI=300, white background
+   - **Custom Settings**: Adjust DPI, background color, watermark removal, image enhancement
+   - **Image Processing**:
+     - Remove watermarks (Inpainting)
+     - Enhance images (contrast, denoising, sharpening)
+     - Convert to grayscale
+
+3. **Language & Theme**:
+   - Switch between English and Chinese
+   - Choose from multiple interface themes
+
+### Command-Line Tool
+
+View help:
 
 ```bash
-pdm run python -m pdf_deskew_ui.main
+pdf-deskew-cli --help
 ```
 
-### 界面说明
-
-1. **文件选择**：
-   - **输入 PDF 文件**：点击“浏览”按钮或将 PDF 文件拖放到拖放区域以选择要校正的 PDF 文件。
-   - **输出 PDF 文件**：点击“浏览”按钮选择保存校正后 PDF 文件的路径。默认情况下，输出文件将命名为“输入文件名_deskewed.pdf”或“输入文件名_校准.pdf”（根据选择的语言）。
-
-2. **设置选项**：
-   - **使用推荐设置**：勾选此选项将使用默认 DPI=300 和白色背景颜色。取消勾选后，您可以自定义 DPI 和背景颜色。
-   - **渲染 DPI**：设置渲染的 DPI 值，范围为 72 至 1200。仅在未勾选“使用推荐设置”时可用。
-   - **背景颜色**：选择背景颜色或点击颜色选择按钮自定义颜色。仅在未勾选“使用推荐设置”时可用。
-
-3. **语言和主题**：
-   - **语言选择**：在下拉菜单中选择“English”或“中文”以切换界面语言。
-   - **主题选择**：在下拉菜单中选择“Light”、“Dark”或“Blue”以更改应用程序的主题。
-
-4. **操作按钮**：
-   - **帮助**：点击“帮助”按钮查看使用说明和帮助信息。
-   - **退出**：点击“退出”按钮关闭应用程序。
-   - **开始校准**：点击“开始校准”按钮启动 PDF 校正过程。
-
-5. **进度反馈**：
-   - **进度条**：显示当前的处理进度。
-   - **百分比标签**：显示进度的具体百分比。
-
-### 示例操作流程
-
-1. **启动应用程序**：
-   ```bash
-   pdm run python -m pdf_deskew_ui.main
-   ```
-
-2. **选择输入 PDF 文件**：
-   - 点击“浏览”按钮选择要校正的 PDF 文件，或将文件拖放到拖放区域。
-
-3. **选择输出 PDF 文件路径**：
-   - 点击“浏览”按钮选择保存校正后 PDF 的路径。默认名称将自动生成。
-
-4. **配置设置**：
-   - 勾选“使用推荐设置”以使用默认 DPI 和背景颜色，或取消勾选以自定义这些设置。
-
-5. **开始校准**：
-   - 点击“开始校准”按钮，程序将显示处理进度。
-   - 处理完成后，系统将提示校正后的 PDF 文件已保存的位置。
-
-## 系统要求
-
-- **操作系统**：Windows、macOS 或 Linux
-- **Python 版本**：Python 3.12 或更高版本
-- **依赖项**：
-  - PyQt6
-  - PyMuPDF
-  - OpenCV
-  - NumPy
-  - Pillow
-  - deskew
-  - qt-material
-
-## 安装依赖项
-
-确保您的项目环境中已安装以下依赖项。您可以使用以下 `requirements.txt` 文件并通过 `pip` 安装：
-
-```plaintext
-PyQt6
-PyMuPDF
-opencv-python
-numpy
-Pillow
-deskew
-qt-material
-```
-
-安装依赖项的命令：
+Basic usage:
 
 ```bash
-pip install -r requirements.txt
+# Simple conversion
+pdf-deskew-cli input.pdf
+
+# Specify output
+pdf-deskew-cli input.pdf -o output.pdf
+
+# Custom DPI
+pdf-deskew-cli input.pdf -d 600
+
+# With enhancements
+pdf-deskew-cli input.pdf --enhance --remove-watermark
+
+# Change background
+pdf-deskew-cli input.pdf --bg-color black
 ```
 
-## 注意事项
+**Command-line Arguments**:
+- `input`: Input PDF file path (required)
+- `-o, --output`: Output file path (default: `input_deskewed.pdf`)
+- `-d, --dpi`: Rendering DPI, range 72-1200 (default: 300)
+- `--bg-color`: Background color, white or black (default: white)
+- `--enhance`: Enable image enhancement
+- `--remove-watermark`: Enable watermark removal
+- `-v, --version`: Show version number
 
-- **文件路径中的特殊字符**：如果输入或输出路径中包含空格或特殊字符，请确保使用引号或转义序列，以避免路径错误。
-- **临时文件**：应用程序会创建一个临时文件夹来存储中间图像，处理完成后会自动删除该文件夹。
-- **日志记录**：处理过程中的日志将记录在项目根目录下的 `pdf_deskew.log` 文件中，便于调试和问题排查。
-- **主题切换**：更改主题后，应用程序界面将立即更新为所选主题，无需重新启动。
+## System Requirements
 
-## 开发
+- **Operating System**: Windows, macOS, or Linux
+- **Python**: 3.12 or higher
+- **Optional**: [uv package manager](https://docs.astral.sh/uv/) (recommended)
 
-如果您希望为此项目做出贡献，可以 fork 此仓库并提交您的更改的 pull request。欢迎任何改进！
+## Notes
 
-### 开发环境设置
+- **Special Characters in Paths**: If your file paths contain spaces or special characters, use quotes to avoid errors.
+- **Temporary Files**: The application creates a temporary folder for intermediate images, which is automatically cleaned up after processing.
+- **Logging**: Processing logs are recorded in `pdf_deskew.log` for debugging purposes.
+- **Theme Switching**: Theme changes take effect immediately without requiring application restart.
 
-1. **克隆仓库**：
+## Development
+
+To contribute to this project:
+
+1. **Clone the Repository**:
    ```bash
    git clone https://github.com/tinnci/pdf_deskew.git
    cd pdf_deskew
    ```
 
-2. **安装依赖项**：
+2. **Set Up Environment**:
    ```bash
-   pdm install
+   uv venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   uv pip install -e .
    ```
 
-3. **运行测试**：
-   - 确保所有功能正常工作，并进行必要的单元测试。
+3. **Run Tests**:
+   ```bash
+   pytest
+   ```
 
-4. **提交更改**：
+4. **Submit Changes**:
    ```bash
    git add .
-   git commit -m "Your commit message"
+   git commit -m "Description of changes"
    git push origin your-branch
    ```
 
-## 许可证
+## License
 
-该项目使用 MIT 许可证。您可以随意使用和修改它。
+This project is licensed under the MIT License. You are free to use and modify it.
 
-## 联系方式
+## Support
 
-如果您有任何问题或遇到问题，可以在 GitHub 上提交 issue，或者通过 [luoyido@outlook.com](mailto:luoyido@outlook.com) 联系我。
-
-## 日志记录
-
-应用程序运行时会生成 `pdf_deskew.log` 日志文件，记录关键事件和错误信息，帮助您了解处理过程或进行故障排除。
+For issues or questions:
+- GitHub Issues: https://github.com/tinnci/pdf_deskew/issues
+- Email: luoyido@outlook.com
 
 ---
 
-感谢您使用 PDF 校准工具！如果您喜欢本项目，请在 GitHub 上为我们点赞，并分享给更多需要的朋友。
+Thank you for using PDF Deskew Tool! If you find it useful, please give us a ⭐ on GitHub and share it with others who might benefit.
