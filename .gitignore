@@ -161,4 +161,22 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+# VS Code
+.vscode/
+*.code-workspace
+
+# Project-specific files
+temp_images/
+*.pdf
+pdf_deskew.log
+
+# Image files (temporary test images)
 *.png
+*.jpg
+*.jpeg
+*.bmp
+*.gif
+
+# IDE
+.idea/
+.DS_Store

@@ -1,10 +1,17 @@
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
 [project]
-name = "deskew"
+name = "pdf-deskew"
 version = "0.1.0"
-description = "Default template for PDM package"
+description = "A GUI tool for deskewing scanned PDF documents"
 authors = [
     {name = "driezy", email = "luoyido@outlook.com"},
 ]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.12"
 dependencies = [
     "PyMuPDF>=1.24.13",
     "opencv-python>=4.10.0.84",
@@ -13,13 +20,25 @@ dependencies = [
     "tqdm>=4.66.6",
     "numpy>=2.1.2",
     "qt-material>=2.14",
-    "pip>=24.3.1",
     "pyqt6>=6.7.1",
 ]
-requires-python = "==3.12.*"
-readme = "README.md"
-license = {text = "MIT"}
 
+[project.gui-scripts]
+pdf-deskew = "pdf_deskew_ui.main:main"
+
+[project.scripts]
+pdf-deskew-cli = "deskew_tool:main"
 
 [tool.pdm]
 distribution = false
+
+[tool.pdm.build]
+package-dir = "src"
+includes = ["src/deskew_tool", "src/pdf_deskew_ui"]
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=23.0",
+    "flake8>=6.0",
+]

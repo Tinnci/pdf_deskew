@@ -8,7 +8,6 @@ import fitz  # PyMuPDF
 import os
 
 from deskew_tool.deskew_pdf import deskew_pdf
-import shutil
 
 class WorkerThread(QThread):
     progress = pyqtSignal(int)

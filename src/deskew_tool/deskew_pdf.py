@@ -212,11 +212,11 @@ def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 
                 sharpening = selected_features.get("sharpening", False)
                 sharpening_strength = selected_features.get("sharpening_strength", 3)
                 img = enhance_image(
-                    img, 
-                    contrast_level=contrast_level, 
-                    denoising_method=denoising_method, 
-                    denoising_kernel=denoising_kernel, 
-                    sharpening=sharpening, 
+                    img,
+                    contrast_level=contrast_level,
+                    denoising_method=denoising_method,
+                    denoising_kernel=denoising_kernel,
+                    sharpening=sharpening,
                     sharpening_strength=sharpening_strength
                 )
                 if progress_callback:
@@ -231,10 +231,10 @@ def deskew_pdf(input_pdf_path, output_pdf_path, dpi=300, background_color=(255, 
                 smoothing_method = selected_features.get("grayscale_smoothing_method", "Gaussian")
                 smoothing_kernel = selected_features.get("grayscale_smoothing_kernel", 3)
                 img = convert_grayscale(
-                    img, 
-                    quant_levels=quant_levels, 
-                    scale_factor=scale_factor, 
-                    smoothing_method=smoothing_method, 
+                    img,
+                    quant_levels=quant_levels,
+                    scale_factor=scale_factor,
+                    smoothing_method=smoothing_method,
                     smoothing_kernel=smoothing_kernel
                 )
                 if progress_callback:

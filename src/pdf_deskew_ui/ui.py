@@ -1,23 +1,20 @@
 # src/pdf_deskew_ui/ui.py
 
-import sys
 import os
-import json
 import logging
 from enum import Enum
-from dataclasses import dataclass, field
-from typing import Dict, Tuple, List
+from dataclasses import dataclass
+from typing import Dict, Tuple
 
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
     QVBoxLayout, QHBoxLayout, QFileDialog, QMessageBox, QCheckBox, QSpinBox,
     QComboBox, QProgressBar, QColorDialog, QApplication, QTextEdit, QSlider, QGroupBox
 )
-from PyQt6.QtCore import Qt, QMimeData
-from PyQt6.QtGui import QColor, QDragEnterEvent, QDropEvent, QIcon, QPixmap, QImage
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap
 
 from .worker import WorkerThread
-from deskew_tool.deskew_pdf import deskew_pdf  # 确保正确的导入路径
 from qt_material import apply_stylesheet
 
 # 定义语言枚举
@@ -1040,14 +1037,14 @@ class MainWindow(QMainWindow):
         """显示处理前后的图像"""
         before_pix = QPixmap(before_image_path)
         after_pix = QPixmap(after_image_path)
-        
+
         # 缩放图像以适应标签
         before_pix = before_pix.scaled(self.before_label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
         after_pix = after_pix.scaled(self.after_label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        
+
         self.before_label.setPixmap(before_pix)
         self.after_label.setPixmap(after_pix)
-        
+
         # 清理临时图像文件
         try:
             os.remove(before_image_path)
@@ -1064,8 +1061,8 @@ class MainWindow(QMainWindow):
         self.dpi_spin.setEnabled(enabled and not self.default_checkbox.isChecked())
         self.bg_combo.setEnabled(enabled and not self.default_checkbox.isChecked())
         self.bg_button.setEnabled(
-            enabled and 
-            not self.default_checkbox.isChecked() and 
+            enabled and
+            not self.default_checkbox.isChecked() and
             self.bg_combo.currentText() == self.get_translation().get("custom", "Custom")
         )
         self.help_button.setEnabled(enabled)
