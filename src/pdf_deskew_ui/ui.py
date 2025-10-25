@@ -266,8 +266,7 @@ class MainWindow(QMainWindow):
         self.total_pages_label.setText(t.get("total_pages_label", "Total Pages:"))
         self.current_page_label.setText(t.get("current_page_label", "Current Page:"))
 
-        # 更新图像处理选项标签和复选框
-        self.image_processing_group.setTitle(t.get("image_processing", "Image Processing Options:"))
+        # 更新图像处理选项复选框文本
         self.remove_watermark_checkbox.setText(t.get("remove_watermark", "Remove Watermark"))
         self.enhance_image_checkbox.setText(t.get("enhance_image", "Enhance Image"))
         self.contrast_enhancement_checkbox.setText(t.get("contrast_enhancement", "Contrast Enhancement:"))
