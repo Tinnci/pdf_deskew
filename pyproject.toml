@@ -5,13 +5,29 @@ build-backend = "pdm.backend"
 [project]
 name = "pdf-deskew"
 version = "0.1.0"
-description = "A GUI tool for deskewing scanned PDF documents"
+description = "A GUI tool for deskewing scanned PDF documents using PyQt6 and OpenCV"
 authors = [
     {name = "driezy", email = "luoyido@outlook.com"},
 ]
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.12"
+keywords = ["pdf", "deskew", "image-processing", "gui", "pyqt6", "opencv"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: X11 Applications :: Qt",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Chinese (Simplified)",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business",
+    "Topic :: Multimedia :: Graphics :: Viewers",
+]
 dependencies = [
     "PyMuPDF>=1.24.13",
     "opencv-python>=4.10.0.84",
@@ -22,6 +38,11 @@ dependencies = [
     "qt-material>=2.14",
     "pyqt6>=6.7.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/Tinnci/pdf_deskew"
+Repository = "https://github.com/Tinnci/pdf_deskew.git"
+Issues = "https://github.com/Tinnci/pdf_deskew/issues"
 
 [project.gui-scripts]
 pdf-deskew = "pdf_deskew_ui.main:main"
