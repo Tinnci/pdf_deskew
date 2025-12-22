@@ -200,6 +200,9 @@ def deskew_pdf(
     """
     校正 PDF 文件中的图像倾斜，并根据用户选择应用图像处理功能。
     """
+    if not selected_features:
+        selected_features = {}
+
     # 打开 PDF 文件，添加错误处理
     try:
         pdf_document = fitz.open(input_pdf_path)
@@ -215,6 +218,7 @@ def deskew_pdf(
     try:
         total_pages = len(pdf_document)
         for page_num in range(total_pages):
+            # ... (rest of the loop)
             # 检查是否需要取消处理
             if is_running_callback and not is_running_callback():
                 if status_callback:
@@ -357,6 +361,8 @@ def deskew_pdf(
         raise e
 
     finally:
+        if "pdf_document" in locals():
+            pdf_document.close()
         # 清理临时文件夹
         for img_path in output_images:
             try:
