@@ -60,6 +60,28 @@ includes = ["src/deskew_tool", "src/pdf_deskew_ui"]
 [tool.pdm.dev-dependencies]
 dev = [
     "pytest>=7.0",
-    "black>=23.0",
-    "flake8>=6.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
 ]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "fitz",
+    "qt_material",
+    "deskew",
+    "cv2",
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B", "UP"]
+ignore = ["N802"]

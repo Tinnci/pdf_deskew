@@ -1,8 +1,10 @@
 # tests/test_deskew.py
 
-import unittest
 import os
+import unittest
+
 from deskew_tool.deskew_pdf import deskew_pdf
+
 
 class TestDeskewPDF(unittest.TestCase):
     def test_deskew_pdf_valid(self):
@@ -30,5 +32,6 @@ class TestDeskewPDF(unittest.TestCase):
         with self.assertRaises(IOError):
             deskew_pdf(input_pdf, output_pdf)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

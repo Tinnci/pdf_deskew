@@ -1,33 +1,49 @@
 # src/pdf_deskew_ui/ui.py
 
-import os
 import logging
-from enum import Enum
+import os
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from enum import Enum
 
-from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QLabel, QLineEdit, QPushButton,
-    QVBoxLayout, QHBoxLayout, QFileDialog, QMessageBox, QCheckBox, QSpinBox,
-    QComboBox, QProgressBar, QColorDialog, QApplication, QTextEdit, QSlider,
-    QTabWidget
-)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap
+from PyQt6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QColorDialog,
+    QComboBox,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QSlider,
+    QSpinBox,
+    QTabWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+from qt_material import apply_stylesheet
 
 from .worker import WorkerThread
-from qt_material import apply_stylesheet
+
 
 # 定义语言枚举
 class Language(Enum):
-    ENGLISH = 'en_US'
-    CHINESE = 'zh_CN'
+    ENGLISH = "en_US"
+    CHINESE = "zh_CN"
+
 
 # 数据类存储背景颜色
 @dataclass
 class BackgroundColor:
     name: str
-    rgb: Tuple[int, int, int]
+    rgb: tuple[int, int, int]
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -37,7 +53,7 @@ class MainWindow(QMainWindow):
         self.background_colors = {
             "White": BackgroundColor("White", (255, 255, 255)),
             "Black": BackgroundColor("Black", (0, 0, 0)),
-            "Custom": BackgroundColor("Custom", (255, 255, 255))
+            "Custom": BackgroundColor("Custom", (255, 255, 255)),
         }
 
         self.selected_color = self.background_colors["White"].rgb  # 默认白色
@@ -45,10 +61,10 @@ class MainWindow(QMainWindow):
         self.translations = self.load_translations()
         self.init_ui()
 
-    def load_translations(self) -> Dict[str, Dict[str, str]]:
+    def load_translations(self) -> dict[str, dict[str, str]]:
         """加载翻译字典，可以扩展为从外部JSON文件加载"""
         return {
-            'en_US': {
+            "en_US": {
                 "window_title": "PDF Deskew Tool",
                 "input_pdf": "Input PDF File:",
                 "browse": "Browse",
@@ -71,18 +87,24 @@ class MainWindow(QMainWindow):
                     "<p><b>Steps to Use:</b></p>"
                     "<ol>"
                     "<li>Click the 'Browse' button to select the input PDF file.</li>"
-                    "<li>Click the 'Browse' button to choose the output PDF file path. By default, the output file will be named 'input_filename_deskewed.pdf'.</li>"
+                    "<li>Click the 'Browse' button to choose the output PDF file path. "
+                    "By default, the output file will be named "
+                    "'input_filename_deskewed.pdf'.</li>"
                     "<li>Select whether to use recommended settings:</li>"
                     "<ul>"
-                    "<li>If 'Use Recommended Settings' is checked, DPI=300 and background color will be white.</li>"
+                    "<li>If 'Use Recommended Settings' is checked, DPI=300 and "
+                    "background color will be white.</li>"
                     "<li>If unchecked, you can customize DPI and background color.</li>"
                     "</ul>"
                     "<li>Click the 'Start Deskew' button to begin processing.</li>"
-                    "<li>During processing, you can see the progress bar indicating the progress.</li>"
+                    "<li>During processing, you can see the progress bar indicating "
+                    "the progress.</li>"
                     "</ol>"
                 ),
                 "confirm_settings_title": "Confirm Settings",
-                "confirm_settings_text": "Please confirm if these settings are correct:",
+                "confirm_settings_text": (
+                    "Please confirm if these settings are correct:"
+                ),
                 "input_path": "Input PDF File Path:",
                 "output_path": "Output PDF File Path:",
                 "dpi": "Render DPI:",
@@ -134,9 +156,9 @@ class MainWindow(QMainWindow):
                 "grayscale_scaling": "Grayscale Scaling:",
                 "grayscale_scale_factor": "Scale Factor:",
                 "grayscale_smoothing_method": "Grayscale Smoothing Method:",
-                "grayscale_smoothing_kernel": "Smoothing Kernel Size:"
+                "grayscale_smoothing_kernel": "Smoothing Kernel Size:",
             },
-            'zh_CN': {
+            "zh_CN": {
                 "window_title": "PDF 校准工具",
                 "input_pdf": "输入 PDF 文件:",
                 "browse": "浏览",
@@ -159,7 +181,8 @@ class MainWindow(QMainWindow):
                     "<p><b>使用步骤:</b></p>"
                     "<ol>"
                     "<li>点击“浏览”按钮选择输入的 PDF 文件。</li>"
-                    "<li>点击“浏览”按钮选择输出的 PDF 文件路径。默认情况下，输出文件将命名为“输入文件名_校准.pdf”。</li>"
+                    "<li>点击“浏览”按钮选择输出的 PDF 文件路径。默认情况下，"
+                    "输出文件将命名为“输入文件名_校准.pdf”。</li>"
                     "<li>选择是否使用推荐设置：</li>"
                     "<ul>"
                     "<li>如果勾选“使用推荐设置”，将使用 DPI=300 和白色背景。</li>"
@@ -222,8 +245,8 @@ class MainWindow(QMainWindow):
                 "grayscale_scaling": "灰度缩放:",
                 "grayscale_scale_factor": "缩放比例:",
                 "grayscale_smoothing_method": "灰度平滑方法:",
-                "grayscale_smoothing_kernel": "平滑内核大小:"
-            }
+                "grayscale_smoothing_kernel": "平滑内核大小:",
+            },
         }
 
     def init_ui_texts(self):
@@ -246,12 +269,20 @@ class MainWindow(QMainWindow):
         self.bg_combo.clear()
         self.bg_combo.addItems([t["white"], t["black"], t["custom"]])
         self.bg_combo.setToolTip(t["background_color"])
-        self.bg_button.setToolTip(t["choose_color_tooltip"] if "choose_color_tooltip" in t else "Choose custom color")
+        self.bg_button.setToolTip(
+            t["choose_color_tooltip"]
+            if "choose_color_tooltip" in t
+            else "Choose custom color"
+        )
         self.language_label.setText(t["language"])
         self.help_button.setText(t["help"])
-        self.help_button.setToolTip(t["help_tooltip"] if "help_tooltip" in t else "Click for help")
+        self.help_button.setToolTip(
+            t["help_tooltip"] if "help_tooltip" in t else "Click for help"
+        )
         self.exit_button.setText(t["exit"])
-        self.exit_button.setToolTip(t["exit_tooltip"] if "exit_tooltip" in t else "Exit the application")
+        self.exit_button.setToolTip(
+            t["exit_tooltip"] if "exit_tooltip" in t else "Exit the application"
+        )
         self.run_button.setText(t["start_deskew"])
         self.run_button.setToolTip(t["start_deskew_tooltip"])
         self.theme_label.setText(t["theme"])
@@ -267,40 +298,70 @@ class MainWindow(QMainWindow):
         self.current_page_label.setText(t.get("current_page_label", "Current Page:"))
 
         # 更新图像处理选项复选框文本
-        self.remove_watermark_checkbox.setText(t.get("remove_watermark", "Remove Watermark"))
+        self.remove_watermark_checkbox.setText(
+            t.get("remove_watermark", "Remove Watermark")
+        )
         self.enhance_image_checkbox.setText(t.get("enhance_image", "Enhance Image"))
-        self.contrast_enhancement_checkbox.setText(t.get("contrast_enhancement", "Contrast Enhancement:"))
-        self.convert_grayscale_checkbox.setText(t.get("convert_grayscale", "Convert to Grayscale"))
+        self.contrast_enhancement_checkbox.setText(
+            t.get("contrast_enhancement", "Contrast Enhancement:")
+        )
+        self.convert_grayscale_checkbox.setText(
+            t.get("convert_grayscale", "Convert to Grayscale")
+        )
 
         # 更新日志标签
         self.log_label.setText(t.get("log_label", "Log:"))
 
         # 更新标签页标题
-        if hasattr(self, 'tabs'):
+        if hasattr(self, "tabs"):
             self.tabs.setTabText(0, t.get("tab_basic", "Basic Settings"))
             self.tabs.setTabText(1, t.get("tab_watermark", "Watermark Removal"))
             self.tabs.setTabText(2, t.get("tab_enhance", "Image Enhancement"))
             self.tabs.setTabText(3, t.get("tab_grayscale", "Grayscale Conversion"))
 
         # 更新水印移除参数
-        self.watermark_removal_method_label.setText(t.get("watermark_removal_method", "Watermark Removal Method:"))
-        self.inpainting_algorithm_label.setText(t.get("inpainting_algorithm", "Inpainting Algorithm:"))
-        self.watermark_mask_threshold_label.setText(t.get("watermark_mask_threshold", "Watermark Mask Threshold:"))
+        self.watermark_removal_method_label.setText(
+            t.get("watermark_removal_method", "Watermark Removal Method:")
+        )
+        self.inpainting_algorithm_label.setText(
+            t.get("inpainting_algorithm", "Inpainting Algorithm:")
+        )
+        self.watermark_mask_threshold_label.setText(
+            t.get("watermark_mask_threshold", "Watermark Mask Threshold:")
+        )
 
         # 更新图像增强参数
         self.contrast_level_label.setText(t.get("contrast_level", "Contrast Level:"))
-        self.denoising_method_label.setText(t.get("denoising_method", "Denoising Method:"))
-        self.denoising_kernel_label.setText(t.get("denoising_kernel_size", "Denoising Kernel Size:"))
+        self.denoising_method_label.setText(
+            t.get("denoising_method", "Denoising Method:")
+        )
+        self.denoising_kernel_label.setText(
+            t.get("denoising_kernel_size", "Denoising Kernel Size:")
+        )
         self.sharpening_checkbox.setText(t.get("sharpening", "Sharpening:"))
-        self.sharpening_strength_label.setText(t.get("sharpening_strength", "Sharpening Strength:"))
+        self.sharpening_strength_label.setText(
+            t.get("sharpening_strength", "Sharpening Strength:")
+        )
 
         # 更新灰度转换参数
-        self.grayscale_quantization_label.setText(t.get("grayscale_quantization", "Grayscale Quantization Levels:"))
-        self.grayscale_quant_levels_label.setText(t.get("grayscale_quant_levels", "Quantization Levels:"))
-        self.grayscale_scaling_label.setText(t.get("grayscale_scaling", "Grayscale Scaling:"))
-        self.grayscale_scale_factor_label.setText(t.get("grayscale_scale_factor", "Scale Factor:"))
-        self.grayscale_smoothing_method_label.setText(t.get("grayscale_smoothing_method", "Grayscale Smoothing Method:"))
-        self.grayscale_smoothing_kernel_label.setText(t.get("grayscale_smoothing_kernel", "Smoothing Kernel Size:"))
+        self.grayscale_quantization_label.setText(
+            t.get("grayscale_quantization", "Grayscale Quantization Levels:")
+        )
+        self.grayscale_quant_levels_label.setText(
+            t.get("grayscale_quant_levels", "Quantization Levels:")
+        )
+        self.grayscale_scaling_label.setText(
+            t.get("grayscale_scaling", "Grayscale Scaling:")
+        )
+        self.grayscale_scale_factor_label.setText(
+            t.get("grayscale_scale_factor", "Scale Factor:")
+        )
+        self.grayscale_smoothing_method_label.setText(
+            t.get("grayscale_smoothing_method", "Grayscale Smoothing Method:")
+        )
+        self.grayscale_smoothing_kernel_label.setText(
+            t.get("grayscale_smoothing_kernel", "Smoothing Kernel Size:")
+        )
 
     def init_ui(self):
         """初始化用户界面 - 使用标签页优化布局"""
@@ -390,7 +451,9 @@ class MainWindow(QMainWindow):
 
         self.remove_watermark_checkbox = QCheckBox()
         self.remove_watermark_checkbox.setChecked(True)
-        self.remove_watermark_checkbox.stateChanged.connect(self.toggle_watermark_options)
+        self.remove_watermark_checkbox.stateChanged.connect(
+            self.toggle_watermark_options
+        )
         watermark_layout.addWidget(self.remove_watermark_checkbox)
 
         watermark_method_layout = QHBoxLayout()
@@ -440,7 +503,9 @@ class MainWindow(QMainWindow):
         # 对比度增强
         self.contrast_enhancement_checkbox = QCheckBox()
         self.contrast_enhancement_checkbox.setChecked(True)
-        self.contrast_enhancement_checkbox.stateChanged.connect(self.toggle_contrast_enhancement_options)
+        self.contrast_enhancement_checkbox.stateChanged.connect(
+            self.toggle_contrast_enhancement_options
+        )
         enhance_layout.addWidget(self.contrast_enhancement_checkbox)
 
         contrast_layout = QHBoxLayout()
@@ -501,7 +566,9 @@ class MainWindow(QMainWindow):
 
         self.convert_grayscale_checkbox = QCheckBox()
         self.convert_grayscale_checkbox.setChecked(False)
-        self.convert_grayscale_checkbox.stateChanged.connect(self.toggle_grayscale_options)
+        self.convert_grayscale_checkbox.stateChanged.connect(
+            self.toggle_grayscale_options
+        )
         grayscale_layout.addWidget(self.convert_grayscale_checkbox)
 
         quant_layout = QHBoxLayout()
@@ -584,7 +651,9 @@ class MainWindow(QMainWindow):
 
         self.remove_watermark_checkbox = QCheckBox()
         self.remove_watermark_checkbox.setChecked(True)
-        self.remove_watermark_checkbox.stateChanged.connect(self.toggle_watermark_options)
+        self.remove_watermark_checkbox.stateChanged.connect(
+            self.toggle_watermark_options
+        )
         watermark_layout.addWidget(self.remove_watermark_checkbox)
 
         watermark_method_layout = QHBoxLayout()
@@ -634,7 +703,9 @@ class MainWindow(QMainWindow):
         # 对比度增强
         self.contrast_enhancement_checkbox = QCheckBox()
         self.contrast_enhancement_checkbox.setChecked(True)
-        self.contrast_enhancement_checkbox.stateChanged.connect(self.toggle_contrast_enhancement_options)
+        self.contrast_enhancement_checkbox.stateChanged.connect(
+            self.toggle_contrast_enhancement_options
+        )
         enhance_layout.addWidget(self.contrast_enhancement_checkbox)
 
         contrast_layout = QHBoxLayout()
@@ -695,7 +766,9 @@ class MainWindow(QMainWindow):
 
         self.convert_grayscale_checkbox = QCheckBox()
         self.convert_grayscale_checkbox.setChecked(False)
-        self.convert_grayscale_checkbox.stateChanged.connect(self.toggle_grayscale_options)
+        self.convert_grayscale_checkbox.stateChanged.connect(
+            self.toggle_grayscale_options
+        )
         grayscale_layout.addWidget(self.convert_grayscale_checkbox)
 
         quant_layout = QHBoxLayout()
@@ -753,7 +826,7 @@ class MainWindow(QMainWindow):
 
         # ===== 底部：语言、主题、按钮 =====
         settings_layout = QHBoxLayout()
-        
+
         self.language_label = QLabel()
         self.language_combo = QComboBox()
         self.language_combo.addItems(["English", "中文"])
@@ -877,21 +950,25 @@ class MainWindow(QMainWindow):
 
     def change_theme(self, index):
         """切换主题"""
-        themes = ['light_blue.xml', 'dark_teal.xml', 'blue.xml']
-        selected_theme = themes[index] if index < len(themes) else 'light_blue.xml'
+        themes = ["light_blue.xml", "dark_teal.xml", "blue.xml"]
+        selected_theme = themes[index] if index < len(themes) else "light_blue.xml"
         apply_stylesheet(QApplication.instance(), theme=selected_theme)
 
     def browse_input(self):
         """浏览选择输入PDF文件"""
         t = self.get_translation()
-        file_path, _ = QFileDialog.getOpenFileName(self, t["input_pdf"], "", "PDF Files (*.pdf)")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, t["input_pdf"], "", "PDF Files (*.pdf)"
+        )
         if file_path:
             self.input_line.setText(file_path)
             # 自动设置默认输出路径
             input_dir = os.path.dirname(file_path)
             input_basename = os.path.splitext(os.path.basename(file_path))[0]
             if self.current_language == Language.ENGLISH:
-                default_output = os.path.join(input_dir, f"{input_basename}_deskewed.pdf")
+                default_output = os.path.join(
+                    input_dir, f"{input_basename}_deskewed.pdf"
+                )
             else:
                 default_output = os.path.join(input_dir, f"{input_basename}_校准.pdf")
             self.output_line.setText(default_output)
@@ -899,7 +976,9 @@ class MainWindow(QMainWindow):
     def browse_output(self):
         """浏览选择输出PDF文件"""
         t = self.get_translation()
-        file_path, _ = QFileDialog.getSaveFileName(self, t["output_pdf"], "", "PDF Files (*.pdf)")
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, t["output_pdf"], "", "PDF Files (*.pdf)"
+        )
         if file_path:
             if not file_path.lower().endswith(".pdf"):
                 file_path += ".pdf"
@@ -945,53 +1024,103 @@ class MainWindow(QMainWindow):
             self.convert_grayscale_checkbox.setEnabled(True)
             self.contrast_enhancement_checkbox.setEnabled(True)
             # Enable watermark removal parameters if watermark removal is checked
-            self.watermark_removal_method_combo.setEnabled(self.remove_watermark_checkbox.isChecked())
-            self.inpainting_algorithm_combo.setEnabled(self.remove_watermark_checkbox.isChecked())
-            self.watermark_mask_threshold_spin.setEnabled(self.remove_watermark_checkbox.isChecked())
+            self.watermark_removal_method_combo.setEnabled(
+                self.remove_watermark_checkbox.isChecked()
+            )
+            self.inpainting_algorithm_combo.setEnabled(
+                self.remove_watermark_checkbox.isChecked()
+            )
+            self.watermark_mask_threshold_spin.setEnabled(
+                self.remove_watermark_checkbox.isChecked()
+            )
             # Enable image enhancement parameters if enhancement is checked
-            self.contrast_level_slider.setEnabled(self.enhance_image_checkbox.isChecked() and self.contrast_enhancement_checkbox.isChecked())
-            self.denoising_method_combo.setEnabled(self.enhance_image_checkbox.isChecked() and self.contrast_enhancement_checkbox.isChecked())
-            self.denoising_kernel_spin.setEnabled(self.enhance_image_checkbox.isChecked() and self.contrast_enhancement_checkbox.isChecked())
+            self.contrast_level_slider.setEnabled(
+                self.enhance_image_checkbox.isChecked()
+                and self.contrast_enhancement_checkbox.isChecked()
+            )
+            self.denoising_method_combo.setEnabled(
+                self.enhance_image_checkbox.isChecked()
+                and self.contrast_enhancement_checkbox.isChecked()
+            )
+            self.denoising_kernel_spin.setEnabled(
+                self.enhance_image_checkbox.isChecked()
+                and self.contrast_enhancement_checkbox.isChecked()
+            )
             self.sharpening_checkbox.setEnabled(self.enhance_image_checkbox.isChecked())
-            self.sharpening_strength_slider.setEnabled(self.enhance_image_checkbox.isChecked() and self.sharpening_checkbox.isChecked())
+            self.sharpening_strength_slider.setEnabled(
+                self.enhance_image_checkbox.isChecked()
+                and self.sharpening_checkbox.isChecked()
+            )
             # Enable grayscale parameters if grayscale conversion is checked
-            self.grayscale_quant_levels_spin.setEnabled(self.convert_grayscale_checkbox.isChecked())
-            self.grayscale_scale_factor_spin.setEnabled(self.convert_grayscale_checkbox.isChecked())
-            self.grayscale_smoothing_method_combo.setEnabled(self.convert_grayscale_checkbox.isChecked())
-            self.grayscale_smoothing_kernel_spin.setEnabled(self.convert_grayscale_checkbox.isChecked())
+            self.grayscale_quant_levels_spin.setEnabled(
+                self.convert_grayscale_checkbox.isChecked()
+            )
+            self.grayscale_scale_factor_spin.setEnabled(
+                self.convert_grayscale_checkbox.isChecked()
+            )
+            self.grayscale_smoothing_method_combo.setEnabled(
+                self.convert_grayscale_checkbox.isChecked()
+            )
+            self.grayscale_smoothing_kernel_spin.setEnabled(
+                self.convert_grayscale_checkbox.isChecked()
+            )
 
     def toggle_watermark_options(self, state):
         """切换水印移除参数选项"""
-        enabled = self.remove_watermark_checkbox.isChecked() and not self.default_checkbox.isChecked()
+        enabled = (
+            self.remove_watermark_checkbox.isChecked()
+            and not self.default_checkbox.isChecked()
+        )
         self.watermark_removal_method_combo.setEnabled(enabled)
         self.inpainting_algorithm_combo.setEnabled(enabled)
         self.watermark_mask_threshold_spin.setEnabled(enabled)
 
     def toggle_enhance_options(self, state):
         """切换图像增强参数选项"""
-        enabled = self.enhance_image_checkbox.isChecked() and not self.default_checkbox.isChecked()
+        enabled = (
+            self.enhance_image_checkbox.isChecked()
+            and not self.default_checkbox.isChecked()
+        )
         self.contrast_enhancement_checkbox.setEnabled(enabled)
-        self.contrast_level_slider.setEnabled(enabled and self.contrast_enhancement_checkbox.isChecked())
-        self.denoising_method_combo.setEnabled(enabled and self.contrast_enhancement_checkbox.isChecked())
-        self.denoising_kernel_spin.setEnabled(enabled and self.contrast_enhancement_checkbox.isChecked())
+        self.contrast_level_slider.setEnabled(
+            enabled and self.contrast_enhancement_checkbox.isChecked()
+        )
+        self.denoising_method_combo.setEnabled(
+            enabled and self.contrast_enhancement_checkbox.isChecked()
+        )
+        self.denoising_kernel_spin.setEnabled(
+            enabled and self.contrast_enhancement_checkbox.isChecked()
+        )
         self.sharpening_checkbox.setEnabled(enabled)
-        self.sharpening_strength_slider.setEnabled(enabled and self.sharpening_checkbox.isChecked())
+        self.sharpening_strength_slider.setEnabled(
+            enabled and self.sharpening_checkbox.isChecked()
+        )
 
     def toggle_contrast_enhancement_options(self, state):
         """切换对比度增强选项"""
-        enabled = self.contrast_enhancement_checkbox.isChecked() and not self.default_checkbox.isChecked()
+        enabled = (
+            self.contrast_enhancement_checkbox.isChecked()
+            and not self.default_checkbox.isChecked()
+        )
         self.contrast_level_slider.setEnabled(enabled)
         self.denoising_method_combo.setEnabled(enabled)
         self.denoising_kernel_spin.setEnabled(enabled)
 
     def toggle_sharpening_options(self, state):
         """切换锐化参数选项"""
-        enabled = self.sharpening_checkbox.isChecked() and not self.default_checkbox.isChecked() and self.enhance_image_checkbox.isChecked()
+        enabled = (
+            self.sharpening_checkbox.isChecked()
+            and not self.default_checkbox.isChecked()
+            and self.enhance_image_checkbox.isChecked()
+        )
         self.sharpening_strength_slider.setEnabled(enabled)
 
     def toggle_grayscale_options(self, state):
         """切换灰度转换参数选项"""
-        enabled = self.convert_grayscale_checkbox.isChecked() and not self.default_checkbox.isChecked()
+        enabled = (
+            self.convert_grayscale_checkbox.isChecked()
+            and not self.default_checkbox.isChecked()
+        )
         self.grayscale_quant_levels_spin.setEnabled(enabled)
         self.grayscale_scale_factor_spin.setEnabled(enabled)
         self.grayscale_smoothing_method_combo.setEnabled(enabled)
@@ -1034,7 +1163,9 @@ class MainWindow(QMainWindow):
                 return
 
             if not output_pdf:
-                QMessageBox.warning(self, t["output_error_title"], t["output_error_text"])
+                QMessageBox.warning(
+                    self, t["output_error_title"], t["output_error_text"]
+                )
                 return
 
             use_defaults = self.default_checkbox.isChecked()
@@ -1092,8 +1223,12 @@ class MainWindow(QMainWindow):
                 # 获取灰度转换参数
                 grayscale_quant_levels = self.grayscale_quant_levels_spin.value()
                 grayscale_scale_factor = self.grayscale_scale_factor_spin.value()
-                grayscale_smoothing_method = self.grayscale_smoothing_method_combo.currentText()
-                grayscale_smoothing_kernel = self.grayscale_smoothing_kernel_spin.value()
+                grayscale_smoothing_method = (
+                    self.grayscale_smoothing_method_combo.currentText()
+                )
+                grayscale_smoothing_kernel = (
+                    self.grayscale_smoothing_kernel_spin.value()
+                )
 
             # 确认设置
             confirm_text = (
@@ -1102,33 +1237,68 @@ class MainWindow(QMainWindow):
                 f"<p><b>{t['output_path']}</b> {output_pdf}</p>"
                 f"<p><b>{t['dpi']}</b> {dpi}</p>"
                 f"<p><b>{t['bg_color']}</b> {background_color}</p>"
-                f"<p><b>{t['remove_watermark']}</b> {'Yes' if remove_watermark else 'No'}</p>"
-                f"<p><b>{t['enhance_image']}</b> {'Yes' if enhance_image else 'No'}</p>"
-                f"<p><b>{t['convert_grayscale']}</b> {'Yes' if convert_grayscale else 'No'}</p>"
+                f"<p><b>{t['remove_watermark']}</b> "
+                f"{'Yes' if remove_watermark else 'No'}</p>"
+                f"<p><b>{t['enhance_image']}</b> "
+                f"{'Yes' if enhance_image else 'No'}</p>"
+                f"<p><b>{t['convert_grayscale']}</b> "
+                f"{'Yes' if convert_grayscale else 'No'}</p>"
             )
 
             if not use_defaults:
                 # 添加详细参数到确认文本
                 confirm_text += "<h3>Watermark Removal Parameters:</h3>"
-                confirm_text += f"<p><b>{t['watermark_removal_method']}</b> {watermark_method}</p>"
-                confirm_text += f"<p><b>{t['inpainting_algorithm']}</b> {inpainting_algo}</p>"
-                confirm_text += f"<p><b>{t['watermark_mask_threshold']}</b> {watermark_threshold}</p>"
+                confirm_text += (
+                    f"<p><b>{t['watermark_removal_method']}</b> {watermark_method}</p>"
+                )
+                confirm_text += (
+                    f"<p><b>{t['inpainting_algorithm']}</b> {inpainting_algo}</p>"
+                )
+                confirm_text += (
+                    f"<p><b>{t['watermark_mask_threshold']}</b> "
+                    f"{watermark_threshold}</p>"
+                )
 
                 confirm_text += "<h3>Image Enhancement Parameters:</h3>"
-                confirm_text += f"<p><b>{t['contrast_enhancement']}</b> {'Yes' if contrast_enhancement else 'No'}</p>"
+                confirm_text += (
+                    f"<p><b>{t['contrast_enhancement']}</b> "
+                    f"{'Yes' if contrast_enhancement else 'No'}</p>"
+                )
                 if contrast_enhancement:
-                    confirm_text += f"<p><b>{t['contrast_level']}</b> {contrast_level}</p>"
-                confirm_text += f"<p><b>{t['denoising_method']}</b> {denoising_method}</p>"
-                confirm_text += f"<p><b>{t['denoising_kernel_size']}</b> {denoising_kernel}</p>"
-                confirm_text += f"<p><b>{t['sharpening']}</b> {'Yes' if sharpening else 'No'}</p>"
+                    confirm_text += (
+                        f"<p><b>{t['contrast_level']}</b> {contrast_level}</p>"
+                    )
+                confirm_text += (
+                    f"<p><b>{t['denoising_method']}</b> {denoising_method}</p>"
+                )
+                confirm_text += (
+                    f"<p><b>{t['denoising_kernel_size']}</b> {denoising_kernel}</p>"
+                )
+                confirm_text += (
+                    f"<p><b>{t['sharpening']}</b> {'Yes' if sharpening else 'No'}</p>"
+                )
                 if sharpening:
-                    confirm_text += f"<p><b>{t['sharpening_strength']}</b> {sharpening_strength}</p>"
+                    confirm_text += (
+                        f"<p><b>{t['sharpening_strength']}</b> "
+                        f"{sharpening_strength}</p>"
+                    )
 
                 confirm_text += "<h3>Grayscale Conversion Parameters:</h3>"
-                confirm_text += f"<p><b>{t['grayscale_quantization']}</b> {grayscale_quant_levels} levels</p>"
-                confirm_text += f"<p><b>{t['grayscale_scaling']}</b> {grayscale_scale_factor}x</p>"
-                confirm_text += f"<p><b>{t['grayscale_smoothing_method']}</b> {grayscale_smoothing_method}</p>"
-                confirm_text += f"<p><b>{t['grayscale_smoothing_kernel']}</b> {grayscale_smoothing_kernel}</p>"
+                confirm_text += (
+                    f"<p><b>{t['grayscale_quantization']}</b> "
+                    f"{grayscale_quant_levels} levels</p>"
+                )
+                confirm_text += (
+                    f"<p><b>{t['grayscale_scaling']}</b> {grayscale_scale_factor}x</p>"
+                )
+                confirm_text += (
+                    f"<p><b>{t['grayscale_smoothing_method']}</b> "
+                    f"{grayscale_smoothing_method}</p>"
+                )
+                confirm_text += (
+                    f"<p><b>{t['grayscale_smoothing_kernel']}</b> "
+                    f"{grayscale_smoothing_kernel}</p>"
+                )
 
                 confirm_text += f"<p>{t['confirm_settings_text']}</p>"
 
@@ -1136,7 +1306,7 @@ class MainWindow(QMainWindow):
                 self,
                 t["confirm_settings_title"],
                 confirm_text,
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             )
             if reply != QMessageBox.StandardButton.Yes:
                 return
@@ -1169,61 +1339,88 @@ class MainWindow(QMainWindow):
                 "grayscale_quant_levels": grayscale_quant_levels,
                 "grayscale_scale_factor": grayscale_scale_factor,
                 "grayscale_smoothing_method": grayscale_smoothing_method,
-                "grayscale_smoothing_kernel": grayscale_smoothing_kernel
+                "grayscale_smoothing_kernel": grayscale_smoothing_kernel,
             }
-            self.worker = WorkerThread(input_pdf, output_pdf, dpi, background_color, selected_features)
+            self.worker = WorkerThread(
+                input_pdf, output_pdf, dpi, background_color, selected_features
+            )
             self.worker.progress.connect(self.update_progress)
             self.worker.finished.connect(self.processing_finished)
             self.worker.error.connect(self.processing_error)
             self.worker.before_after.connect(self.display_before_after)  # 连接新的信号
             self.worker.status.connect(self.update_status)  # 连接状态更新信号
             self.worker.total_pages.connect(self.update_total_pages)  # 连接总页数信号
-            self.worker.current_page.connect(self.update_current_page)  # 连接当前页数信号
+            self.worker.current_page.connect(
+                self.update_current_page
+            )  # 连接当前页数信号
             self.worker.start()
             self.cancel_button.setEnabled(True)  # 启用取消按钮
 
         except Exception as e:
-            QMessageBox.critical(self, "Unexpected Error", f"An unexpected error occurred:\n{str(e)}")
+            QMessageBox.critical(
+                self, "Unexpected Error", f"An unexpected error occurred:\n{str(e)}"
+            )
             logging.exception("An unexpected error occurred in start_processing")
             self.set_ui_enabled(True)
 
-
-    def get_translation(self) -> Dict[str, str]:
+    def get_translation(self) -> dict[str, str]:
         """获取当前语言的翻译字典"""
         lang = self.current_language.value
-        return self.translations.get(lang, self.translations[Language.CHINESE.value])
+        translations = self.translations.get(
+            lang, self.translations[Language.CHINESE.value]
+        )
+        return translations  # type: ignore
 
     # 文件拖放事件
-    def dragEnterEvent(self, event: QDragEnterEvent):
+    def dragEnterEvent(self, event: QDragEnterEvent | None):
         """处理拖入事件"""
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
+        if event:
+            mime_data = event.mimeData()
+            if mime_data and mime_data.hasUrls():
+                event.acceptProposedAction()
 
-    def dropEvent(self, event: QDropEvent):
+    def dropEvent(self, event: QDropEvent | None):
         """处理拖放事件"""
-        for url in event.mimeData().urls():
-            file_path = url.toLocalFile()
-            if file_path.lower().endswith(".pdf"):
-                self.input_line.setText(file_path)
-                # 自动设置默认输出路径
-                input_dir = os.path.dirname(file_path)
-                input_basename = os.path.splitext(os.path.basename(file_path))[0]
-                if self.current_language == Language.ENGLISH:
-                    default_output = os.path.join(input_dir, f"{input_basename}_deskewed.pdf")
-                else:
-                    default_output = os.path.join(input_dir, f"{input_basename}_校准.pdf")
-                self.output_line.setText(default_output)
-                break  # 仅处理第一个PDF文件
+        if event:
+            mime_data = event.mimeData()
+            if mime_data:
+                for url in mime_data.urls():
+                    file_path = url.toLocalFile()
+                    if file_path.lower().endswith(".pdf"):
+                        self.input_line.setText(file_path)
+                        # 自动设置默认输出路径
+                        input_dir = os.path.dirname(file_path)
+                        input_basename = os.path.splitext(
+                            os.path.basename(file_path)
+                        )[0]
+                        if self.current_language == Language.ENGLISH:
+                            default_output = os.path.join(
+                                input_dir, f"{input_basename}_deskewed.pdf"
+                            )
+                        else:
+                            default_output = os.path.join(
+                                input_dir, f"{input_basename}_校准.pdf"
+                            )
+                        self.output_line.setText(default_output)
+                        break  # 仅处理第一个PDF文件
 
     def cancel_processing(self):
         """取消当前的处理"""
-        if hasattr(self, 'worker') and self.worker.isRunning():
+        if hasattr(self, "worker") and self.worker.isRunning():
             self.worker.stop()
             self.worker.wait()
             self.cancel_button.setEnabled(False)
             self.set_ui_enabled(True)
-            self.status_text.setText("Processing cancelled." if self.current_language == Language.ENGLISH else "处理已取消。")
-            self.log_text.append("Processing cancelled by user." if self.current_language == Language.ENGLISH else "用户取消了处理。")
+            self.status_text.setText(
+                "Processing cancelled."
+                if self.current_language == Language.ENGLISH
+                else "处理已取消。"
+            )
+            self.log_text.append(
+                "Processing cancelled by user."
+                if self.current_language == Language.ENGLISH
+                else "用户取消了处理。"
+            )
             logging.info("Processing cancelled by user.")
 
     def update_progress(self, value):
@@ -1252,7 +1449,11 @@ class MainWindow(QMainWindow):
         self.progress_label.setText("100%")
         self.status_text.setText(t["processing_complete_text"])
         self.log_text.append(t["processing_complete_text"])
-        QMessageBox.information(self, t["processing_complete_title"], f"{t['processing_complete_text']}\n{output_pdf}")
+        QMessageBox.information(
+            self,
+            t["processing_complete_title"],
+            f"{t['processing_complete_text']}\n{output_pdf}",
+        )
 
         # 重新启用界面元素
         self.set_ui_enabled(True)
@@ -1261,7 +1462,11 @@ class MainWindow(QMainWindow):
     def processing_error(self, error_message):
         """处理错误"""
         t = self.get_translation()
-        QMessageBox.critical(self, t["processing_error_title"], f"{t['processing_error_text']}\n{error_message}")
+        QMessageBox.critical(
+            self,
+            t["processing_error_title"],
+            f"{t['processing_error_text']}\n{error_message}",
+        )
         self.log_text.append(f"{t['processing_error_text']}\n{error_message}")
 
         # 重新启用界面元素
@@ -1274,8 +1479,16 @@ class MainWindow(QMainWindow):
         after_pix = QPixmap(after_image_path)
 
         # 缩放图像以适应标签
-        before_pix = before_pix.scaled(self.before_label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-        after_pix = after_pix.scaled(self.after_label.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        before_pix = before_pix.scaled(
+            self.before_label.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        after_pix = after_pix.scaled(
+            self.after_label.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
 
         self.before_label.setPixmap(before_pix)
         self.after_label.setPixmap(after_pix)
@@ -1296,32 +1509,92 @@ class MainWindow(QMainWindow):
         self.dpi_spin.setEnabled(enabled and not self.default_checkbox.isChecked())
         self.bg_combo.setEnabled(enabled and not self.default_checkbox.isChecked())
         self.bg_button.setEnabled(
-            enabled and
-            not self.default_checkbox.isChecked() and
-            self.bg_combo.currentText() == self.get_translation().get("custom", "Custom")
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.bg_combo.currentText()
+            == self.get_translation().get("custom", "Custom")
         )
         self.help_button.setEnabled(enabled)
         self.exit_button.setEnabled(enabled)
         self.language_combo.setEnabled(enabled)
         self.theme_combo.setEnabled(enabled)
         # 控制图像处理复选框的启用状态
-        self.remove_watermark_checkbox.setEnabled(enabled and not self.default_checkbox.isChecked())
-        self.enhance_image_checkbox.setEnabled(enabled and not self.default_checkbox.isChecked())
-        self.convert_grayscale_checkbox.setEnabled(enabled and not self.default_checkbox.isChecked())
-        self.contrast_enhancement_checkbox.setEnabled(enabled and not self.default_checkbox.isChecked())
+        self.remove_watermark_checkbox.setEnabled(
+            enabled and not self.default_checkbox.isChecked()
+        )
+        self.enhance_image_checkbox.setEnabled(
+            enabled and not self.default_checkbox.isChecked()
+        )
+        self.convert_grayscale_checkbox.setEnabled(
+            enabled and not self.default_checkbox.isChecked()
+        )
+        self.contrast_enhancement_checkbox.setEnabled(
+            enabled and not self.default_checkbox.isChecked()
+        )
         # 控制水印移除参数的启用状态
-        self.watermark_removal_method_combo.setEnabled(enabled and not self.default_checkbox.isChecked() and self.remove_watermark_checkbox.isChecked())
-        self.inpainting_algorithm_combo.setEnabled(enabled and not self.default_checkbox.isChecked() and self.remove_watermark_checkbox.isChecked())
-        self.watermark_mask_threshold_spin.setEnabled(enabled and not self.default_checkbox.isChecked() and self.remove_watermark_checkbox.isChecked())
+        self.watermark_removal_method_combo.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.remove_watermark_checkbox.isChecked()
+        )
+        self.inpainting_algorithm_combo.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.remove_watermark_checkbox.isChecked()
+        )
+        self.watermark_mask_threshold_spin.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.remove_watermark_checkbox.isChecked()
+        )
         # 控制图像增强参数的启用状态
-        self.contrast_level_slider.setEnabled(enabled and not self.default_checkbox.isChecked() and self.enhance_image_checkbox.isChecked() and self.contrast_enhancement_checkbox.isChecked())
-        self.denoising_method_combo.setEnabled(enabled and not self.default_checkbox.isChecked() and self.enhance_image_checkbox.isChecked() and self.contrast_enhancement_checkbox.isChecked())
-        self.denoising_kernel_spin.setEnabled(enabled and not self.default_checkbox.isChecked() and self.enhance_image_checkbox.isChecked() and self.contrast_enhancement_checkbox.isChecked())
-        self.sharpening_checkbox.setEnabled(enabled and not self.default_checkbox.isChecked() and self.enhance_image_checkbox.isChecked())
-        self.sharpening_strength_slider.setEnabled(enabled and not self.default_checkbox.isChecked() and self.enhance_image_checkbox.isChecked() and self.sharpening_checkbox.isChecked())
+        self.contrast_level_slider.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.enhance_image_checkbox.isChecked()
+            and self.contrast_enhancement_checkbox.isChecked()
+        )
+        self.denoising_method_combo.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.enhance_image_checkbox.isChecked()
+            and self.contrast_enhancement_checkbox.isChecked()
+        )
+        self.denoising_kernel_spin.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.enhance_image_checkbox.isChecked()
+            and self.contrast_enhancement_checkbox.isChecked()
+        )
+        self.sharpening_checkbox.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.enhance_image_checkbox.isChecked()
+        )
+        self.sharpening_strength_slider.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.enhance_image_checkbox.isChecked()
+            and self.sharpening_checkbox.isChecked()
+        )
         # 控制灰度转换参数的启用状态
-        self.grayscale_quant_levels_spin.setEnabled(enabled and not self.default_checkbox.isChecked() and self.convert_grayscale_checkbox.isChecked())
-        self.grayscale_scale_factor_spin.setEnabled(enabled and not self.default_checkbox.isChecked() and self.convert_grayscale_checkbox.isChecked())
-        self.grayscale_smoothing_method_combo.setEnabled(enabled and not self.default_checkbox.isChecked() and self.convert_grayscale_checkbox.isChecked())
-        self.grayscale_smoothing_kernel_spin.setEnabled(enabled and not self.default_checkbox.isChecked() and self.convert_grayscale_checkbox.isChecked())
-
+        self.grayscale_quant_levels_spin.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.convert_grayscale_checkbox.isChecked()
+        )
+        self.grayscale_scale_factor_spin.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.convert_grayscale_checkbox.isChecked()
+        )
+        self.grayscale_smoothing_method_combo.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.convert_grayscale_checkbox.isChecked()
+        )
+        self.grayscale_smoothing_kernel_spin.setEnabled(
+            enabled
+            and not self.default_checkbox.isChecked()
+            and self.convert_grayscale_checkbox.isChecked()
+        )

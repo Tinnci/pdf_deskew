@@ -1,13 +1,15 @@
 # src/pdf_deskew_ui/worker.py
 
 import logging
-from PyQt6.QtCore import QThread, pyqtSignal
-import cv2
-import numpy as np
-import fitz  # PyMuPDF
 import os
 
+import cv2
+import fitz  # PyMuPDF
+import numpy as np
+from PyQt6.QtCore import QThread, pyqtSignal
+
 from deskew_tool.deskew_pdf import deskew_pdf
+
 
 class WorkerThread(QThread):
     progress = pyqtSignal(int)
@@ -40,7 +42,9 @@ class WorkerThread(QThread):
             if total_pages > 0:
                 page = pdf_document.load_page(0)
                 pix = page.get_pixmap(dpi=self.dpi)
-                img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
+                img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
+                    pix.height, pix.width, pix.n
+                )
                 if img.ndim == 2:
                     img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
                 cv2.imwrite(temp_before, img)
@@ -56,7 +60,7 @@ class WorkerThread(QThread):
                 current_page_callback=self.update_current_page_status,
                 status_callback=self.update_status,  # 传递status_callback
                 is_running_callback=self.is_running,  # 传递is_running_callback
-                selected_features=self.selected_features
+                selected_features=self.selected_features,
             )
 
             # 在处理后保存一张处理后的页面图像用于展示
@@ -66,7 +70,9 @@ class WorkerThread(QThread):
             if len(pdf_document) > 0:
                 page = pdf_document.load_page(0)
                 pix = page.get_pixmap(dpi=self.dpi)
-                img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
+                img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
+                    pix.height, pix.width, pix.n
+                )
                 if img.ndim == 2:
                     img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
                 cv2.imwrite(temp_after, img)
@@ -83,12 +89,16 @@ class WorkerThread(QThread):
                 try:
                     os.remove(temp_before)
                 except Exception as e:
-                    logging.warning(f"Unable to remove temporary file {temp_before}: {e}")
+                    logging.warning(
+                        f"Unable to remove temporary file {temp_before}: {e}"
+                    )
             if os.path.exists(temp_after):
                 try:
                     os.remove(temp_after)
                 except Exception as e:
-                    logging.warning(f"Unable to remove temporary file {temp_after}: {e}")
+                    logging.warning(
+                        f"Unable to remove temporary file {temp_after}: {e}"
+                    )
 
     def update_progress_with_status(self, value):
         """更新进度并发送状态信息"""

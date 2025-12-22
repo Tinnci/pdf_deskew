@@ -1,8 +1,8 @@
 """PDF Deskew Tool - A tool for deskewing scanned PDF documents."""
 
 import argparse
-import sys
 import logging
+import sys
 from pathlib import Path
 
 from .deskew_pdf import deskew_pdf
@@ -12,8 +12,7 @@ __author__ = "driezy"
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -21,45 +20,33 @@ logger = logging.getLogger(__name__)
 def main():
     """Command-line entry point for PDF deskewing."""
     parser = argparse.ArgumentParser(
-        description="Deskew scanned PDF documents",
-        prog="pdf-deskew-cli"
+        description="Deskew scanned PDF documents", prog="pdf-deskew-cli"
     )
+    parser.add_argument("input", help="Input PDF file path")
     parser.add_argument(
-        "input",
-        help="Input PDF file path"
-    )
-    parser.add_argument(
-        "-o", "--output",
+        "-o",
+        "--output",
         help="Output PDF file path (default: input_deskewed.pdf)",
-        default=None
+        default=None,
     )
     parser.add_argument(
-        "-d", "--dpi",
-        type=int,
-        default=300,
-        help="DPI for rendering (default: 300)"
+        "-d", "--dpi", type=int, default=300, help="DPI for rendering (default: 300)"
     )
     parser.add_argument(
         "--bg-color",
         type=str,
         default="white",
         choices=["white", "black"],
-        help="Background color (default: white)"
+        help="Background color (default: white)",
     )
     parser.add_argument(
-        "--enhance",
-        action="store_true",
-        help="Enable image enhancement"
+        "--enhance", action="store_true", help="Enable image enhancement"
     )
     parser.add_argument(
-        "--remove-watermark",
-        action="store_true",
-        help="Enable watermark removal"
+        "--remove-watermark", action="store_true", help="Enable watermark removal"
     )
     parser.add_argument(
-        "-v", "--version",
-        action="version",
-        version=f"%(prog)s {__version__}"
+        "-v", "--version", action="version", version=f"%(prog)s {__version__}"
     )
 
     args = parser.parse_args()
@@ -80,10 +67,7 @@ def main():
         output_path = str(input_path.parent / f"{input_path.stem}_deskewed.pdf")
 
     # Parse background color
-    bg_color_map = {
-        "white": (255, 255, 255),
-        "black": (0, 0, 0)
-    }
+    bg_color_map = {"white": (255, 255, 255), "black": (0, 0, 0)}
     bg_color = bg_color_map.get(args.bg_color.lower(), (255, 255, 255))
 
     # Prepare features
@@ -117,7 +101,7 @@ def main():
             output_path,
             dpi=args.dpi,
             background_color=bg_color,
-            selected_features=selected_features
+            selected_features=selected_features,
         )
 
         logger.info("Deskewing completed successfully!")
