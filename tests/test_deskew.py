@@ -2,6 +2,7 @@
 
 import os
 import unittest
+
 import fitz
 
 from deskew_tool.deskew_pdf import deskew_pdf
@@ -11,7 +12,7 @@ class TestDeskewPDF(unittest.TestCase):
     def setUp(self):
         self.input_pdf = "tests/sample_input.pdf"
         self.output_pdf = "tests/sample_output.pdf"
-        
+
         # Create a dummy PDF for testing if it doesn't exist
         if not os.path.isfile(self.input_pdf):
             doc = fitz.open()

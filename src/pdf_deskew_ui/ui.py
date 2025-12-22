@@ -1390,9 +1390,9 @@ class MainWindow(QMainWindow):
                         self.input_line.setText(file_path)
                         # 自动设置默认输出路径
                         input_dir = os.path.dirname(file_path)
-                        input_basename = os.path.splitext(
-                            os.path.basename(file_path)
-                        )[0]
+                        input_basename = os.path.splitext(os.path.basename(file_path))[
+                            0
+                        ]
                         if self.current_language == Language.ENGLISH:
                             default_output = os.path.join(
                                 input_dir, f"{input_basename}_deskewed.pdf"
