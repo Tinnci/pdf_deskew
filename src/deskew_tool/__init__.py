@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .deskew_pdf import deskew_pdf
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 __author__ = "driezy"
 
 # Configure logging
