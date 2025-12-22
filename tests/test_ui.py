@@ -1,13 +1,16 @@
 import pytest
 from PyQt6.QtWidgets import QApplication
+
 from pdf_deskew_ui.ui import MainWindow
-from pdf_deskew_ui.widgets import FileSelectionWidget, ConfigWidget, StatusWidget
+from pdf_deskew_ui.widgets import ConfigWidget, FileSelectionWidget, StatusWidget
+
 
 @pytest.fixture
 def app(qtbot):
     """Fixture for the QApplication."""
     # qtbot handles the application lifecycle
     return QApplication.instance()
+
 
 def test_mainwindow_init(qtbot):
     """Test that MainWindow can be initialized without errors."""
@@ -18,6 +21,7 @@ def test_mainwindow_init(qtbot):
     assert window.config_widget is not None
     assert window.status_widget is not None
 
+
 def test_file_selection_widget_init(qtbot):
     """Test that FileSelectionWidget can be initialized without errors."""
     translations = {"input_pdf": "Input", "browse": "Browse", "output_pdf": "Output"}
@@ -25,6 +29,7 @@ def test_file_selection_widget_init(qtbot):
     qtbot.addWidget(widget)
     assert widget.input_line is not None
     assert widget.input_browse is not None
+
 
 def test_config_widget_init(qtbot):
     """Test that ConfigWidget can be initialized without errors."""
@@ -41,11 +46,12 @@ def test_config_widget_init(qtbot):
         "tab_basic": "Basic",
         "tab_watermark": "Watermark",
         "tab_enhance": "Enhance",
-        "tab_grayscale": "Grayscale"
+        "tab_grayscale": "Grayscale",
     }
     widget = ConfigWidget(translations)
     qtbot.addWidget(widget)
     assert widget.tabs is not None
+
 
 def test_status_widget_init(qtbot):
     """Test that StatusWidget can be initialized without errors."""
@@ -55,11 +61,12 @@ def test_status_widget_init(qtbot):
     assert widget.progress_bar is not None
     assert widget.log_text is not None
 
+
 def test_theme_switching(qtbot):
     """Test that switching themes doesn't crash."""
     window = MainWindow()
     qtbot.addWidget(window)
-    
+
     # Switch to Dark
     window.change_theme(1)
     # Switch to Blue
