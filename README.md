@@ -30,6 +30,10 @@
   - **Bilingual**: Full support for English and Chinese.
 - **Flexible CLI**: Robust command-line interface for automation and power users.
 
+### Development
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for instructions on setting up the development environment and contributing.
+
 ### Installation
 
 #### Recommended: Using [uv](https://docs.astral.sh/uv/)
@@ -87,6 +91,10 @@ pdf-deskew-cli input.pdf --enhance --remove-watermark
   - **拖放支持**：支持直接拖入文件进行处理。
   - **双语支持**：完整的中英文界面切换。
 - **灵活的命令行**：为高级用户和自动化脚本提供强大的 CLI 支持。
+
+### 开发指南
+
+请参阅 [DEVELOPMENT.md](DEVELOPMENT.md) 了解如何搭建开发环境及参与贡献。
 
 ### 安装方法
 
