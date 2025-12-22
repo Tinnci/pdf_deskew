@@ -94,10 +94,25 @@ filterwarnings = [
     "ignore:builtin type .* has no __module__ attribute:DeprecationWarning",
 ]
 
-[tool.coverage.run]
-source = ["src"]
-omit = ["tests/*", "**/__init__.py"]
-
 [tool.coverage.report]
 show_missing = true
 fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "pass",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "tests/*",
+    "**/__init__.py",
+    "src/pdf_deskew_ui/main.py",
+    "src/pdf_deskew_ui/ui.py",
+    "src/pdf_deskew_ui/widgets.py",
+    "src/pdf_deskew_ui/worker.py",
+]
