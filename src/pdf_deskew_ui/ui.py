@@ -95,6 +95,7 @@ class MainWindow(QMainWindow):
         self.sidebar.setMaximumWidth(1000)  # 允许较大宽度
 
         sidebar_content = QWidget()
+        sidebar_content.setObjectName("sidebar_content")
         sidebar_layout = QVBoxLayout(sidebar_content)
         sidebar_layout.setContentsMargins(15, 15, 15, 15)
         sidebar_layout.setSpacing(20)
@@ -162,6 +163,7 @@ class MainWindow(QMainWindow):
 
         # --- 右侧面板 (预览区域) ---
         self.preview_panel = QWidget()
+        self.preview_panel.setObjectName("preview_panel")
         preview_layout = QVBoxLayout(self.preview_panel)
 
         # 预览控制
@@ -210,10 +212,12 @@ class MainWindow(QMainWindow):
 
         # 预览滚动区域
         self.preview_scroll = QScrollArea()
+        self.preview_scroll.setObjectName("preview_scroll")
         self.preview_scroll.setWidgetResizable(True)
         self.preview_scroll.setFrameShape(QFrame.Shape.NoFrame)
 
         preview_container = QWidget()
+        preview_container.setObjectName("preview_container")
         preview_images_layout = QHBoxLayout(preview_container)
         preview_images_layout.setSpacing(20)
 
@@ -239,7 +243,6 @@ class MainWindow(QMainWindow):
 
     def update_ui_styles(self):
         """更新全局 UI 样式"""
-        theme = StyleManager.get_theme()
         self.setStyleSheet(StyleManager.get_main_style())
         self.sidebar.setStyleSheet(StyleManager.get_sidebar_style())
         self.preview_panel.setStyleSheet(StyleManager.get_preview_panel_style())
@@ -247,22 +250,19 @@ class MainWindow(QMainWindow):
         for label in [self.before_label, self.after_label]:
             label.setStyleSheet(StyleManager.get_preview_label_style())
 
-        self.run_button.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {theme.primary};
-                color: {theme.surface};
-                font-weight: bold;
-                padding: 10px;
-                border-radius: 4px;
-            }}
-            QPushButton:hover {{
-                background-color: {theme.primary};
-                opacity: 0.9;
-            }}
-            QPushButton:disabled {{
-                background-color: {theme.border};
-            }}
-        """)
+        # 按钮样式
+        self.run_button.setStyleSheet(StyleManager.get_primary_button_style())
+        secondary_style = StyleManager.get_secondary_button_style()
+        for btn in [
+            self.cancel_button,
+            self.help_button,
+            self.toggle_sidebar_button,
+            self.preview_button,
+            self.zoom_in_button,
+            self.zoom_out_button,
+            self.zoom_reset_button,
+        ]:
+            btn.setStyleSheet(secondary_style)
 
         # 通知子组件更新样式
         self.file_widget.update_style()

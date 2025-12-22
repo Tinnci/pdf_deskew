@@ -82,6 +82,38 @@ class StyleManager:
             QWidget {{
                 color: {theme.text_primary};
             }}
+            QLabel {{
+                color: {theme.text_primary};
+            }}
+            QCheckBox, QRadioButton {{
+                color: {theme.text_primary};
+            }}
+            QLineEdit, QSpinBox, QComboBox, QTextEdit {{
+                background-color: {theme.surface};
+                border: 1px solid {theme.border};
+                border-radius: 4px;
+                padding: 4px;
+                color: {theme.text_primary};
+            }}
+            QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{
+                border: 1px solid {theme.primary};
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {theme.surface};
+                border: 1px solid {theme.border};
+                selection-background-color: {theme.primary};
+                selection-color: white;
+                color: {theme.text_primary};
+            }}
+            QSplitter::handle {{
+                background-color: {theme.border};
+            }}
+            QSplitter::handle:horizontal {{
+                width: 1px;
+            }}
+            QSplitter::handle:vertical {{
+                height: 1px;
+            }}
         """
 
     @classmethod
@@ -92,20 +124,85 @@ class StyleManager:
                 background-color: {theme.background};
                 border: none;
             }}
+            QWidget#sidebar_content {{
+                background-color: {theme.background};
+            }}
         """
 
     @classmethod
     def get_preview_panel_style(cls) -> str:
         theme = cls._current_theme
         return f"""
-            background-color: {theme.background};
+            QWidget#preview_panel {{
+                background-color: {theme.background};
+            }}
+            QScrollArea#preview_scroll {{
+                background-color: {theme.background};
+                border: none;
+            }}
+            QWidget#preview_container {{
+                background-color: {theme.background};
+            }}
         """
 
     @classmethod
     def get_preview_label_style(cls) -> str:
         theme = cls._current_theme
         return f"""
-            background-color: {theme.surface};
-            border: 1px solid {theme.border};
-            border-radius: 8px;
+            QLabel {{
+                background-color: {theme.surface};
+                border: 1px solid {theme.border};
+                border-radius: 8px;
+                color: {theme.text_primary};
+            }}
+        """
+
+    @classmethod
+    def get_primary_button_style(cls) -> str:
+        theme = cls._current_theme
+        return f"""
+            QPushButton {{
+                background-color: {theme.primary};
+                color: white;
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 4px;
+                border: none;
+            }}
+            QPushButton:hover {{
+                background-color: {theme.primary};
+                opacity: 0.8;
+            }}
+            QPushButton:pressed {{
+                background-color: {theme.primary};
+                opacity: 0.7;
+            }}
+            QPushButton:disabled {{
+                background-color: {theme.border};
+                color: {theme.text_secondary};
+            }}
+        """
+
+    @classmethod
+    def get_secondary_button_style(cls) -> str:
+        theme = cls._current_theme
+        return f"""
+            QPushButton {{
+                background-color: {theme.surface};
+                color: {theme.text_primary};
+                border: 1px solid {theme.border};
+                padding: 6px 12px;
+                border-radius: 4px;
+            }}
+            QPushButton:hover {{
+                background-color: {theme.background};
+                border-color: {theme.primary};
+            }}
+            QPushButton:pressed {{
+                background-color: {theme.border};
+            }}
+            QPushButton:disabled {{
+                color: {theme.text_secondary};
+                border-color: {theme.border};
+            }}
         """

@@ -92,7 +92,6 @@ class FileSelectionWidget(QWidget):
             self.t.get("drag_drop_hint", "Drag and drop a PDF file here")
         )
         self.drag_drop_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.update_style()
         container_layout.addWidget(self.drag_drop_label)
 
         # Input file
@@ -126,6 +125,7 @@ class FileSelectionWidget(QWidget):
         container_layout.addLayout(output_layout)
 
         layout.addWidget(self.container)
+        self.update_style()
 
     def update_translations(self, t):
         self.t = t
@@ -153,6 +153,11 @@ class FileSelectionWidget(QWidget):
                 background-color: {theme.primary_light};
             }}
         """)
+
+        btn_style = StyleManager.get_secondary_button_style()
+        self.input_browse.setStyleSheet(btn_style)
+        self.output_browse.setStyleSheet(btn_style)
+
         if hasattr(self, "container"):
             self.container.update_style()
 
@@ -171,7 +176,6 @@ class ConfigWidget(QWidget):
         container_layout = self.container.content_layout
 
         self.tabs = QTabWidget()
-        self.update_style()
 
         # 1. Basic Tab
         self.basic_tab = QWidget()
@@ -262,6 +266,7 @@ class ConfigWidget(QWidget):
 
         container_layout.addWidget(self.tabs)
         layout.addWidget(self.container)
+        self.update_style()
 
     def toggle_settings(self, state):
         enabled = state == Qt.CheckState.Unchecked.value
@@ -330,6 +335,17 @@ class ConfigWidget(QWidget):
                 color: {theme.primary};
             }}
         """)
+
+        # Ensure tab contents have the correct background
+        tab_style = f"background-color: {theme.surface}; color: {theme.text_primary};"
+        for tab in [
+            self.basic_tab,
+            self.watermark_tab,
+            self.enhance_tab,
+            self.grayscale_tab,
+        ]:
+            tab.setStyleSheet(tab_style)
+
         if hasattr(self, "container"):
             self.container.update_style()
 
