@@ -5,6 +5,7 @@ import unittest
 
 import fitz
 
+from deskew_tool.config import DeskewConfig
 from deskew_tool.deskew_pdf import deskew_pdf
 
 
@@ -28,13 +29,12 @@ class TestDeskewPDF(unittest.TestCase):
             os.remove(self.output_pdf)
 
     def test_deskew_pdf_valid(self):
-        dpi = 300
-        background_color = (255, 255, 255)
+        config = DeskewConfig(dpi=300, background_color=(255, 255, 255))
 
         # 确保输入文件存在
         self.assertTrue(os.path.isfile(self.input_pdf), f"{self.input_pdf} 不存在。")
 
-        deskew_pdf(self.input_pdf, self.output_pdf, dpi, background_color)
+        deskew_pdf(self.input_pdf, self.output_pdf, config=config)
         # 检查输出文件是否生成
         self.assertTrue(os.path.isfile(self.output_pdf), f"{self.output_pdf} 未生成。")
 

@@ -8,6 +8,7 @@ import fitz  # PyMuPDF
 import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from deskew_tool.config import DeskewConfig
 from deskew_tool.deskew_pdf import deskew_pdf
 
 
@@ -20,13 +21,11 @@ class WorkerThread(QThread):
     total_pages = pyqtSignal(int)  # 新增信号，用于发送总页数
     current_page = pyqtSignal(int)  # 新增信号，用于发送当前页数
 
-    def __init__(self, input_pdf, output_pdf, dpi, background_color, selected_features):
+    def __init__(self, input_pdf, output_pdf, config: DeskewConfig):
         super().__init__()
         self.input_pdf = input_pdf
         self.output_pdf = output_pdf
-        self.dpi = dpi
-        self.background_color = background_color
-        self.selected_features = selected_features  # 用户选择的图像处理功能
+        self.config = config
         self._is_running = True  # 标志位
 
     def run(self):
@@ -41,7 +40,7 @@ class WorkerThread(QThread):
 
             if total_pages > 0:
                 page = pdf_document.load_page(0)
-                pix = page.get_pixmap(dpi=self.dpi)
+                pix = page.get_pixmap(dpi=self.config.dpi)
                 img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
                     pix.height, pix.width, pix.n
                 )
@@ -54,13 +53,11 @@ class WorkerThread(QThread):
             deskew_pdf(
                 self.input_pdf,
                 self.output_pdf,
-                dpi=self.dpi,
-                background_color=self.background_color,
+                config=self.config,
                 progress_callback=self.update_progress_with_status,
                 current_page_callback=self.update_current_page_status,
                 status_callback=self.update_status,  # 传递status_callback
                 is_running_callback=self.is_running,  # 传递is_running_callback
-                selected_features=self.selected_features,
             )
 
             # 在处理后保存一张处理后的页面图像用于展示
@@ -69,7 +66,7 @@ class WorkerThread(QThread):
             pdf_document = fitz.open(self.output_pdf)
             if len(pdf_document) > 0:
                 page = pdf_document.load_page(0)
-                pix = page.get_pixmap(dpi=self.dpi)
+                pix = page.get_pixmap(dpi=self.config.dpi)
                 img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
                     pix.height, pix.width, pix.n
                 )

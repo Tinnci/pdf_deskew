@@ -12,6 +12,8 @@ import numpy as np
 from deskew import determine_skew
 from PIL import Image
 
+from .config import DeskewConfig
+
 # Suppress SwigPyPacked deprecation warnings from PyMuPDF/SWIG
 warnings.filterwarnings(
     "ignore", category=DeprecationWarning, message="builtin type .* has no __module__"
@@ -195,19 +197,17 @@ def convert_grayscale(
 def deskew_pdf(
     input_pdf_path,
     output_pdf_path,
-    dpi=300,
-    background_color=(255, 255, 255),
+    config: DeskewConfig | None = None,
     progress_callback=None,
     current_page_callback=None,
     status_callback=None,
     is_running_callback=None,
-    selected_features=None,
 ):
     """
     校正 PDF 文件中的图像倾斜，并根据用户选择应用图像处理功能。
     """
-    if not selected_features:
-        selected_features = {}
+    if not config:
+        config = DeskewConfig()
 
     # 打开 PDF 文件，添加错误处理
     try:
@@ -243,8 +243,8 @@ def deskew_pdf(
 
             # 将页面渲染为图像
             page = pdf_document.load_page(page_num)
-            pix = page.get_pixmap(dpi=dpi)
-            img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
+            pix = page.get_pixmap(dpi=config.dpi)
+            img: np.ndarray = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
                 pix.height, pix.width, pix.n
             )
 
@@ -254,12 +254,12 @@ def deskew_pdf(
 
             # 图像预处理
             # 1. 根据用户选择移除水印
-            if selected_features.get("remove_watermark", False):
-                method = selected_features.get("watermark_method", "Inpainting")
-                algorithm = selected_features.get("inpainting_algorithm", "Telea")
-                threshold = selected_features.get("watermark_threshold", 127)
+            if config.remove_watermark:
                 img = remove_watermark(
-                    img, method=method, algorithm=algorithm, threshold=threshold
+                    img,
+                    method=config.watermark_method,
+                    algorithm=config.inpainting_algorithm,
+                    threshold=config.watermark_threshold,
                 )
                 if progress_callback:
                     progress_callback(base_progress + 5)
@@ -267,19 +267,14 @@ def deskew_pdf(
                     status_callback("Removing watermarks...")
 
             # 2. 根据用户选择增强图像
-            if selected_features.get("enhance_image", False):
-                contrast_level = selected_features.get("contrast_level", 2)
-                denoising_method = selected_features.get("denoising_method", "Gaussian")
-                denoising_kernel = selected_features.get("denoising_kernel", 3)
-                sharpening = selected_features.get("sharpening", False)
-                sharpening_strength = selected_features.get("sharpening_strength", 3)
+            if config.enhance_image:
                 img = enhance_image(
                     img,
-                    contrast_level=contrast_level,
-                    denoising_method=denoising_method,
-                    denoising_kernel=denoising_kernel,
-                    sharpening=sharpening,
-                    sharpening_strength=sharpening_strength,
+                    contrast_level=config.contrast_level,
+                    denoising_method=config.denoising_method,
+                    denoising_kernel=config.denoising_kernel,
+                    sharpening=config.sharpening,
+                    sharpening_strength=config.sharpening_strength,
                 )
                 if progress_callback:
                     progress_callback(base_progress + 10)
@@ -287,21 +282,13 @@ def deskew_pdf(
                     status_callback("Enhancing image readability...")
 
             # 3. 根据用户选择转换为灰度图像
-            if selected_features.get("convert_grayscale", False):
-                quant_levels = selected_features.get("grayscale_quant_levels", 64)
-                scale_factor = selected_features.get("grayscale_scale_factor", 1)
-                smoothing_method = selected_features.get(
-                    "grayscale_smoothing_method", "Gaussian"
-                )
-                smoothing_kernel = selected_features.get(
-                    "grayscale_smoothing_kernel", 3
-                )
+            if config.convert_grayscale:
                 img = convert_grayscale(
                     img,
-                    quant_levels=quant_levels,
-                    scale_factor=scale_factor,
-                    smoothing_method=smoothing_method,
-                    smoothing_kernel=smoothing_kernel,
+                    quant_levels=config.grayscale_quant_levels,
+                    scale_factor=config.grayscale_scale_factor,
+                    smoothing_method=config.grayscale_smoothing_method,
+                    smoothing_kernel=config.grayscale_smoothing_kernel,
                 )
                 if progress_callback:
                     progress_callback(base_progress + 15)
@@ -322,7 +309,9 @@ def deskew_pdf(
                         f"Detected skew angle {angle} degrees on page {page_num + 1}"
                     )
                 # 旋转图像校正倾斜，使用自定义背景颜色
-                corrected_img = rotate_image(img, angle, background=background_color)
+                corrected_img = rotate_image(
+                    img, angle, background=config.background_color
+                )
             else:
                 logging.info(f"No skew detected on page {page_num + 1}")
                 if status_callback:

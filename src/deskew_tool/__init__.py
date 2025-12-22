@@ -5,6 +5,7 @@ import logging
 import sys
 from pathlib import Path
 
+from .config import DeskewConfig
 from .deskew_pdf import deskew_pdf
 
 __version__ = "0.1.8"
@@ -39,12 +40,47 @@ def main():
         choices=["white", "black"],
         help="Background color (default: white)",
     )
-    parser.add_argument(
+
+    # Enhancement group
+    enhance_group = parser.add_argument_group("Image Enhancement")
+    enhance_group.add_argument(
         "--enhance", action="store_true", help="Enable image enhancement"
     )
-    parser.add_argument(
+    enhance_group.add_argument(
+        "--contrast-level",
+        type=int,
+        default=2,
+        choices=[1, 2, 3],
+        help="Contrast level (1-3)",
+    )
+    enhance_group.add_argument(
+        "--denoising",
+        choices=["Gaussian", "Median"],
+        default="Gaussian",
+        help="Denoising method",
+    )
+    enhance_group.add_argument(
+        "--sharpen", action="store_true", help="Enable sharpening"
+    )
+
+    # Watermark group
+    watermark_group = parser.add_argument_group("Watermark Removal")
+    watermark_group.add_argument(
         "--remove-watermark", action="store_true", help="Enable watermark removal"
     )
+    watermark_group.add_argument(
+        "--watermark-threshold",
+        type=int,
+        default=127,
+        help="Watermark mask threshold (0-255)",
+    )
+
+    # Grayscale group
+    grayscale_group = parser.add_argument_group("Grayscale Conversion")
+    grayscale_group.add_argument(
+        "--grayscale", action="store_true", help="Convert to grayscale"
+    )
+
     parser.add_argument(
         "-v", "--version", action="version", version=f"%(prog)s {__version__}"
     )
@@ -70,38 +106,29 @@ def main():
     bg_color_map = {"white": (255, 255, 255), "black": (0, 0, 0)}
     bg_color = bg_color_map.get(args.bg_color.lower(), (255, 255, 255))
 
-    # Prepare features
-    selected_features = {
-        "enhance_image": args.enhance,
-        "remove_watermark": args.remove_watermark,
-        "contrast_enhancement": args.enhance,
-        "convert_grayscale": False,
-        "contrast_level": 2,
-        "denoising_method": "Gaussian",
-        "denoising_kernel": 3,
-        "sharpening": False,
-        "sharpening_strength": 3,
-        "watermark_removal_method": "Inpainting",
-        "inpainting_algorithm": "Telea",
-        "watermark_mask_threshold": 127,
-        "grayscale_quant_levels": 64,
-        "grayscale_scale_factor": 1,
-        "grayscale_smoothing_method": "Gaussian",
-        "grayscale_smoothing_kernel": 3,
-    }
+    # Create config
+    config = DeskewConfig(
+        dpi=args.dpi,
+        background_color=bg_color,
+        remove_watermark=args.remove_watermark,
+        watermark_threshold=args.watermark_threshold,
+        enhance_image=args.enhance,
+        contrast_enhancement=args.enhance,  # Linked to enhance for now in CLI
+        contrast_level=args.contrast_level,
+        denoising_method=args.denoising,
+        sharpening=args.sharpen,
+        convert_grayscale=args.grayscale,
+    )
 
     try:
         logger.info(f"Starting deskewing: {input_path}")
         logger.info(f"Output will be saved to: {output_path}")
-        logger.info(f"DPI: {args.dpi}")
-        logger.info(f"Background color: {args.bg_color}")
+        logger.info(f"Config: {config}")
 
         deskew_pdf(
             input_path,
             output_path,
-            dpi=args.dpi,
-            background_color=bg_color,
-            selected_features=selected_features,
+            config=config,
         )
 
         logger.info("Deskewing completed successfully!")

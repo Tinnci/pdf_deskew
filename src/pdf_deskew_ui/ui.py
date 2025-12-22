@@ -1,9 +1,11 @@
 # src/pdf_deskew_ui/ui.py
 
+import json
 import logging
 import os
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QIcon, QPixmap
@@ -28,6 +30,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 from qt_material import apply_stylesheet
+
+from deskew_tool.config import DeskewConfig
 
 from .worker import WorkerThread
 
@@ -62,192 +66,19 @@ class MainWindow(QMainWindow):
         self.init_ui()
 
     def load_translations(self) -> dict[str, dict[str, str]]:
-        """加载翻译字典，可以扩展为从外部JSON文件加载"""
-        return {
-            "en_US": {
-                "window_title": "PDF Deskew Tool",
-                "input_pdf": "Input PDF File:",
-                "browse": "Browse",
-                "output_pdf": "Output PDF File:",
-                "use_defaults": "Use Recommended Settings (DPI=300, Background=White)",
-                "render_dpi": "Render DPI:",
-                "background_color": "Background Color:",
-                "white": "White",
-                "black": "Black",
-                "custom": "Custom",
-                "language": "Language:",
-                "help": "Help",
-                "exit": "Exit",
-                "start_deskew": "Start Deskew",
-                "help_info_title": "Help Information",
-                "help_info_text": (
-                    "<h2>Help Information</h2>"
-                    "<p>This tool is used to deskew scanned images in PDF files.</p>"
-                    "<p>You can select files, set DPI, and choose background color.</p>"
-                    "<p><b>Steps to Use:</b></p>"
-                    "<ol>"
-                    "<li>Click the 'Browse' button to select the input PDF file.</li>"
-                    "<li>Click the 'Browse' button to choose the output PDF file path. "
-                    "By default, the output file will be named "
-                    "'input_filename_deskewed.pdf'.</li>"
-                    "<li>Select whether to use recommended settings:</li>"
-                    "<ul>"
-                    "<li>If 'Use Recommended Settings' is checked, DPI=300 and "
-                    "background color will be white.</li>"
-                    "<li>If unchecked, you can customize DPI and background color.</li>"
-                    "</ul>"
-                    "<li>Click the 'Start Deskew' button to begin processing.</li>"
-                    "<li>During processing, you can see the progress bar indicating "
-                    "the progress.</li>"
-                    "</ol>"
-                ),
-                "confirm_settings_title": "Confirm Settings",
-                "confirm_settings_text": (
-                    "Please confirm if these settings are correct:"
-                ),
-                "input_path": "Input PDF File Path:",
-                "output_path": "Output PDF File Path:",
-                "dpi": "Render DPI:",
-                "bg_color": "Background Color:",
-                "confirm": "Confirm",
-                "cancel": "Cancel",
-                "input_error_title": "Input Error",
-                "input_error_text": "Please enter a valid input PDF file path.",
-                "output_error_title": "Output Error",
-                "output_error_text": "Please enter a valid output PDF file path.",
-                "processing_complete_title": "Completed",
-                "processing_complete_text": "The deskewed PDF has been saved to:",
-                "processing_error_title": "Error",
-                "processing_error_text": "An error occurred during processing:",
-                "browse_tooltip": "Click to browse and select a PDF file",
-                "start_deskew_tooltip": "Click to start the deskew process",
-                "theme": "Theme:",
-                "theme_tooltip": "Select a theme for the application",
-                "choose_color_tooltip": "Choose a custom background color",
-                "help_tooltip": "Click for help",
-                "exit_tooltip": "Exit the application",
-                "status_label": "Status:",
-                "total_pages_label": "Total Pages:",
-                "current_page_label": "Current Page:",
-                "image_processing": "Image Processing Options:",
-                "remove_watermark": "Remove Watermark",
-                "enhance_image": "Enhance Image",
-                "convert_grayscale": "Convert to Grayscale",
-                "log_label": "Log:",
-                # Tab页标签
-                "tab_basic": "Basic Settings",
-                "tab_watermark": "Watermark Removal",
-                "tab_enhance": "Image Enhancement",
-                "tab_grayscale": "Grayscale Conversion",
-                # 新增翻译键
-                "watermark_removal_method": "Watermark Removal Method:",
-                "inpainting_algorithm": "Inpainting Algorithm:",
-                "telea": "Telea",
-                "navier_stokes": "Navier-Stokes",
-                "watermark_mask_threshold": "Watermark Mask Threshold:",
-                "contrast_enhancement": "Contrast Enhancement:",
-                "contrast_level": "Contrast Level:",
-                "denoising_method": "Denoising Method:",
-                "denoising_kernel_size": "Denoising Kernel Size:",
-                "sharpening": "Sharpening:",
-                "sharpening_strength": "Sharpening Strength:",
-                "grayscale_quantization": "Grayscale Quantization Levels:",
-                "grayscale_quant_levels": "Quantization Levels:",
-                "grayscale_scaling": "Grayscale Scaling:",
-                "grayscale_scale_factor": "Scale Factor:",
-                "grayscale_smoothing_method": "Grayscale Smoothing Method:",
-                "grayscale_smoothing_kernel": "Smoothing Kernel Size:",
-            },
-            "zh_CN": {
-                "window_title": "PDF 校准工具",
-                "input_pdf": "输入 PDF 文件:",
-                "browse": "浏览",
-                "output_pdf": "输出 PDF 文件:",
-                "use_defaults": "使用推荐设置 (DPI=300, 背景色=白色)",
-                "render_dpi": "渲染 DPI:",
-                "background_color": "背景颜色:",
-                "white": "白色",
-                "black": "黑色",
-                "custom": "自定义",
-                "language": "语言:",
-                "help": "帮助",
-                "exit": "退出",
-                "start_deskew": "开始校准",
-                "help_info_title": "帮助信息",
-                "help_info_text": (
-                    "<h2>帮助信息</h2>"
-                    "<p>此工具用于校准 PDF 文件中的扫描图像。</p>"
-                    "<p>您可以选择文件、设置 DPI 以及背景颜色。</p>"
-                    "<p><b>使用步骤:</b></p>"
-                    "<ol>"
-                    "<li>点击“浏览”按钮选择输入的 PDF 文件。</li>"
-                    "<li>点击“浏览”按钮选择输出的 PDF 文件路径。默认情况下，"
-                    "输出文件将命名为“输入文件名_校准.pdf”。</li>"
-                    "<li>选择是否使用推荐设置：</li>"
-                    "<ul>"
-                    "<li>如果勾选“使用推荐设置”，将使用 DPI=300 和白色背景。</li>"
-                    "<li>如果取消勾选，可以自定义 DPI 和背景颜色。</li>"
-                    "</ul>"
-                    "<li>点击“开始校准”按钮开始处理。</li>"
-                    "<li>处理过程中，您可以看到进度条显示进度。</li>"
-                    "</ol>"
-                ),
-                "confirm_settings_title": "确认设置",
-                "confirm_settings_text": "请确认这些设置是否正确：",
-                "input_path": "输入 PDF 文件路径:",
-                "output_path": "输出 PDF 文件路径:",
-                "dpi": "渲染 DPI:",
-                "bg_color": "背景颜色:",
-                "confirm": "确认",
-                "cancel": "取消",
-                "input_error_title": "输入错误",
-                "input_error_text": "请输入有效的输入 PDF 文件路径。",
-                "output_error_title": "输出错误",
-                "output_error_text": "请输入有效的输出 PDF 文件路径。",
-                "processing_complete_title": "完成",
-                "processing_complete_text": "校准后的 PDF 已保存到:",
-                "processing_error_title": "错误",
-                "processing_error_text": "处理过程中出现错误:",
-                "browse_tooltip": "点击浏览并选择一个PDF文件",
-                "start_deskew_tooltip": "点击开始校准过程",
-                "theme": "主题:",
-                "theme_tooltip": "选择应用程序的主题",
-                "choose_color_tooltip": "选择自定义背景颜色",
-                "help_tooltip": "点击获取帮助",
-                "exit_tooltip": "退出应用程序",
-                "status_label": "状态:",
-                "total_pages_label": "总页数:",
-                "current_page_label": "当前页数:",
-                "image_processing": "图像处理选项:",
-                "remove_watermark": "移除水印",
-                "enhance_image": "增强图像",
-                "convert_grayscale": "转换为灰度图像",
-                "log_label": "日志:",
-                # Tab页标签
-                "tab_basic": "基础设置",
-                "tab_watermark": "水印移除",
-                "tab_enhance": "图像增强",
-                "tab_grayscale": "灰度转换",
-                # 新增翻译键
-                "watermark_removal_method": "水印移除方法:",
-                "inpainting_algorithm": "修复算法:",
-                "telea": "Telea",
-                "navier_stokes": "Navier-Stokes",
-                "watermark_mask_threshold": "水印掩码阈值:",
-                "contrast_enhancement": "对比度增强:",
-                "contrast_level": "对比度等级:",
-                "denoising_method": "去噪方法:",
-                "denoising_kernel_size": "去噪内核大小:",
-                "sharpening": "锐化:",
-                "sharpening_strength": "锐化强度:",
-                "grayscale_quantization": "灰度量化等级:",
-                "grayscale_quant_levels": "量化等级:",
-                "grayscale_scaling": "灰度缩放:",
-                "grayscale_scale_factor": "缩放比例:",
-                "grayscale_smoothing_method": "灰度平滑方法:",
-                "grayscale_smoothing_kernel": "平滑内核大小:",
-            },
-        }
+        """加载翻译字典，从外部JSON文件加载"""
+        try:
+            trans_path = Path(__file__).parent / "translations.json"
+            with open(trans_path, encoding="utf-8") as f:
+                data = json.load(f)
+                return data if isinstance(data, dict) else {}
+        except Exception as e:
+            logging.error(f"Failed to load translations: {e}")
+            # Fallback to a minimal dict if file is missing
+            return {
+                "en_US": {"window_title": "PDF Deskew Tool"},
+                "zh_CN": {"window_title": "PDF 校准工具"},
+            }
 
     def init_ui_texts(self):
         """根据当前语言设置所有UI文本"""
@@ -1323,27 +1154,27 @@ class MainWindow(QMainWindow):
             self.log_text.clear()  # 清空日志窗口
 
             # 启动工作线程
-            selected_features = {
-                "remove_watermark": remove_watermark,
-                "enhance_image": enhance_image,
-                "convert_grayscale": convert_grayscale,
-                "watermark_method": watermark_method,
-                "inpainting_algorithm": inpainting_algo,
-                "watermark_threshold": watermark_threshold,
-                "contrast_enhancement": contrast_enhancement,
-                "contrast_level": contrast_level,
-                "denoising_method": denoising_method,
-                "denoising_kernel": denoising_kernel,
-                "sharpening": sharpening,
-                "sharpening_strength": sharpening_strength,
-                "grayscale_quant_levels": grayscale_quant_levels,
-                "grayscale_scale_factor": grayscale_scale_factor,
-                "grayscale_smoothing_method": grayscale_smoothing_method,
-                "grayscale_smoothing_kernel": grayscale_smoothing_kernel,
-            }
-            self.worker = WorkerThread(
-                input_pdf, output_pdf, dpi, background_color, selected_features
+            config = DeskewConfig(
+                dpi=dpi,
+                background_color=background_color,
+                remove_watermark=remove_watermark,
+                watermark_method=watermark_method,
+                inpainting_algorithm=inpainting_algo,
+                watermark_threshold=watermark_threshold,
+                enhance_image=enhance_image,
+                contrast_enhancement=contrast_enhancement,
+                contrast_level=contrast_level,
+                denoising_method=denoising_method,
+                denoising_kernel=denoising_kernel,
+                sharpening=sharpening,
+                sharpening_strength=sharpening_strength,
+                convert_grayscale=convert_grayscale,
+                grayscale_quant_levels=grayscale_quant_levels,
+                grayscale_scale_factor=grayscale_scale_factor,
+                grayscale_smoothing_method=grayscale_smoothing_method,
+                grayscale_smoothing_kernel=grayscale_smoothing_kernel,
             )
+            self.worker = WorkerThread(input_pdf, output_pdf, config)
             self.worker.progress.connect(self.update_progress)
             self.worker.finished.connect(self.processing_finished)
             self.worker.error.connect(self.processing_error)
