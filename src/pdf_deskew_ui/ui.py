@@ -8,11 +8,11 @@ from typing import cast
 import cv2
 import fitz
 import numpy as np
-from PyQt6.QtCore import (  # type: ignore
+from PyQt6.QtCore import (
     QEasingCurve,
     QPropertyAnimation,
     Qt,
-    pyqtProperty,
+    pyqtProperty,  # type: ignore
 )
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QWheelEvent
 from PyQt6.QtWidgets import (
