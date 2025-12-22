@@ -12,19 +12,16 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
       - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libgl1 libglib2.0-0
-      - name: Install PDM
-        uses: pdm-project/setup-pdm@v4
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
         with:
+          enable-cache: true
           python-version: '3.12'
       - name: Build package
-        run: pdm build
+        run: uv build
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        run: uv publish

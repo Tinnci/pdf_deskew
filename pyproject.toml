@@ -1,6 +1,6 @@
 [build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "pdf-deskew"
@@ -50,19 +50,14 @@ pdf-deskew = "pdf_deskew_ui.main:main"
 [project.scripts]
 pdf-deskew-cli = "deskew_tool:main"
 
-[tool.pdm]
-distribution = true
+[tool.hatch.build.targets.wheel]
+packages = ["src/deskew_tool", "src/pdf_deskew_ui"]
 
-[tool.pdm.build]
-package-dir = "src"
-includes = ["src/deskew_tool", "src/pdf_deskew_ui"]
-
-[tool.pdm.version]
-source = "file"
+[tool.hatch.version]
 path = "src/deskew_tool/__init__.py"
 
-[tool.pdm.dev-dependencies]
-dev = [
+[tool.uv]
+dev-dependencies = [
     "pytest>=7.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
