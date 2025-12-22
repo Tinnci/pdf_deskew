@@ -565,9 +565,7 @@ class MainWindow(QMainWindow):
         self.splitter.setSizes([width, self.width() - width])
 
     # Use pyqtProperty to define sidebar_width for animation
-    sidebar_width = pyqtProperty(
-        int, fget=_get_sidebar_width, fset=_set_sidebar_width
-    )
+    sidebar_width = pyqtProperty(int, fget=_get_sidebar_width, fset=_set_sidebar_width)
 
     def set_ui_enabled(self, enabled):
         self.file_widget.setEnabled(enabled)
