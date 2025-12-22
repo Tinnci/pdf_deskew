@@ -27,7 +27,7 @@ class StyledFrame(QFrame):
         super().__init__(parent)
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setFrameShadow(QFrame.Shadow.Raised)
-        self.layout = QVBoxLayout(self)
+        self.content_layout = QVBoxLayout(self)
 
         if title:
             self.add_title(title)
@@ -62,14 +62,14 @@ class StyledFrame(QFrame):
             font-size: 14px;
             color: {theme.primary};
         """)
-        self.layout.addWidget(self.title_label)
+        self.content_layout.addWidget(self.title_label)
 
         # Add a separator line
         self.separator = QFrame()
         self.separator.setFrameShape(QFrame.Shape.HLine)
         self.separator.setFrameShadow(QFrame.Shadow.Sunken)
         self.separator.setStyleSheet(f"background-color: {theme.border};")
-        self.layout.addWidget(self.separator)
+        self.content_layout.addWidget(self.separator)
 
 
 class FileSelectionWidget(QWidget):
@@ -85,7 +85,7 @@ class FileSelectionWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.container = StyledFrame(self.t.get("input_pdf", "File Selection"))
-        container_layout = self.container.layout
+        container_layout = self.container.content_layout
 
         # Drag and drop hint
         self.drag_drop_label = QLabel(
@@ -168,7 +168,7 @@ class ConfigWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.container = StyledFrame(self.t.get("image_processing", "Configuration"))
-        container_layout = self.container.layout
+        container_layout = self.container.content_layout
 
         self.tabs = QTabWidget()
         self.update_style()
@@ -345,7 +345,7 @@ class StatusWidget(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.container = StyledFrame(self.t.get("status_label", "Status"))
-        container_layout = self.container.layout
+        container_layout = self.container.content_layout
 
         # Progress
         progress_layout = QHBoxLayout()

@@ -41,7 +41,7 @@ class WorkerThread(QThread):
             if total_pages > 0:
                 page = pdf_document.load_page(0)
                 pix = page.get_pixmap(dpi=self.config.dpi)
-                img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
+                img: np.ndarray = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
                     pix.height, pix.width, pix.n
                 )
                 if img.ndim == 2:
@@ -118,6 +118,10 @@ class WorkerThread(QThread):
     def update_current_page_status(self, current_page):
         """发送当前处理的页数"""
         self.current_page.emit(current_page)
+
+    def update_status(self, message):
+        """发送状态信息"""
+        self.status.emit(message)
 
     def is_running(self):
         """返回当前线程是否在运行"""

@@ -204,7 +204,7 @@ def process_single_page(page_num, input_pdf_path, config, temp_folder):
         doc = fitz.open(input_pdf_path)
         page = doc.load_page(page_num)
         pix = page.get_pixmap(dpi=config.dpi)
-        img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
+        img: np.ndarray = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
             pix.height, pix.width, pix.n
         )
 

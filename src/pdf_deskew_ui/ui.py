@@ -8,7 +8,12 @@ from typing import cast
 import cv2
 import fitz
 import numpy as np
-from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt, pyqtProperty
+from PyQt6.QtCore import (  # type: ignore
+    QEasingCurve,
+    QPropertyAnimation,
+    Qt,
+    pyqtProperty,
+)
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QWheelEvent
 from PyQt6.QtWidgets import (
     QApplication,
@@ -330,7 +335,7 @@ class MainWindow(QMainWindow):
             doc = fitz.open(input_pdf)
             page = doc.load_page(page_num)
             pix = page.get_pixmap(dpi=config.dpi)
-            img_before = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
+            img_before: np.ndarray = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
                 pix.height, pix.width, pix.n
             )
             if img_before.ndim == 2:
@@ -552,15 +557,18 @@ class MainWindow(QMainWindow):
             self.sidebar.setMaximumWidth(1000)
             self.sidebar.setFixedWidth(16777215)  # QWIDGETSIZE_MAX
 
-    @pyqtProperty(int)
-    def sidebar_width(self):
+    def _get_sidebar_width(self):
         return self.sidebar.width()
 
-    @sidebar_width.setter
-    def sidebar_width(self, width):
+    def _set_sidebar_width(self, width):
         self.sidebar.setFixedWidth(width)
         # 强制刷新布局
         self.splitter.setSizes([width, self.width() - width])
+
+    # Use pyqtProperty to define sidebar_width for animation
+    sidebar_width = pyqtProperty(  # type: ignore
+        int, fget=_get_sidebar_width, fset=_set_sidebar_width
+    )
 
     def set_ui_enabled(self, enabled):
         self.file_widget.setEnabled(enabled)
@@ -568,15 +576,15 @@ class MainWindow(QMainWindow):
         self.run_button.setEnabled(enabled)
         self.cancel_button.setEnabled(not enabled)
 
-    def dragEnterEvent(self, event: QDragEnterEvent | None):
-        if event:
-            mime_data = event.mimeData()
+    def dragEnterEvent(self, a0: QDragEnterEvent | None):
+        if a0:
+            mime_data = a0.mimeData()
             if mime_data and mime_data.hasUrls():
-                event.acceptProposedAction()
+                a0.acceptProposedAction()
 
-    def dropEvent(self, event: QDropEvent | None):
-        if event:
-            mime_data = event.mimeData()
+    def dropEvent(self, a0: QDropEvent | None):
+        if a0:
+            mime_data = a0.mimeData()
             if mime_data:
                 for url in mime_data.urls():
                     path = url.toLocalFile()
@@ -585,14 +593,14 @@ class MainWindow(QMainWindow):
                         self.browse_input_path(path)
                         break
 
-    def wheelEvent(self, event: QWheelEvent | None):
+    def wheelEvent(self, a0: QWheelEvent | None):
         """处理鼠标滚轮缩放 (Ctrl + Wheel)"""
-        if event and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
-            delta = event.angleDelta().y()
+        if a0 and a0.modifiers() == Qt.KeyboardModifier.ControlModifier:
+            delta = a0.angleDelta().y()
             if delta > 0:
                 self.zoom_in()
             else:
                 self.zoom_out()
-            event.accept()
+            a0.accept()
         else:
-            super().wheelEvent(event) if event else None
+            super().wheelEvent(a0) if a0 else None
