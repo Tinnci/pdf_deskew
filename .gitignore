@@ -173,3 +173,9 @@ pdf_deskew.log
 # IDE
 .idea/
 .DS_Store
+# uv and virtual environments
+.venv/
+
+# Cache
+.mypy_cache/
+.ruff_cache/
