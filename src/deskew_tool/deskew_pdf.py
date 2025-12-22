@@ -4,12 +4,18 @@ import logging
 import os
 import shutil
 import tempfile
+import warnings
 
 import cv2
 import fitz  # PyMuPDF
 import numpy as np
 from deskew import determine_skew
 from PIL import Image
+
+# Suppress SwigPyPacked deprecation warnings from PyMuPDF/SWIG
+warnings.filterwarnings(
+    "ignore", category=DeprecationWarning, message="builtin type .* has no __module__"
+)
 
 
 def rotate_image(
