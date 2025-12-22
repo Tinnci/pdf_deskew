@@ -9,7 +9,7 @@ def test_attach_to_console_windows_success():
     # 模拟 Windows 环境和相关的 API 调用
     with (
         patch("os.name", "nt"),
-        patch("ctypes.WinDLL") as mock_windll,
+        patch("ctypes.WinDLL", create=True) as mock_windll,
         patch("builtins.open", MagicMock()) as mock_open,
     ):
         # 设置 mock kernel32
@@ -44,7 +44,7 @@ def test_attach_to_console_windows_success():
 
 def test_attach_to_console_windows_fail():
     """测试在 Windows 环境下附加失败的情况（例如没有父控制台）"""
-    with patch("os.name", "nt"), patch("ctypes.WinDLL") as mock_windll:
+    with patch("os.name", "nt"), patch("ctypes.WinDLL", create=True) as mock_windll:
         mock_kernel32 = MagicMock()
         mock_kernel32.AttachConsole.return_value = False
         mock_windll.return_value = mock_kernel32
