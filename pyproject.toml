@@ -51,7 +51,7 @@ pdf-deskew = "pdf_deskew_ui.main:main"
 pdf-deskew-cli = "deskew_tool:main"
 
 [tool.pdm]
-distribution = false
+distribution = true
 
 [tool.pdm.build]
 package-dir = "src"
