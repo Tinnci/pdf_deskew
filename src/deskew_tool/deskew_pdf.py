@@ -1,5 +1,6 @@
 # src/deskew_tool/deskew_pdf.py
 
+import concurrent.futures
 import logging
 import os
 import shutil
@@ -194,6 +195,73 @@ def convert_grayscale(
     return gray_final
 
 
+def process_single_page(page_num, input_pdf_path, config, temp_folder):
+    """
+    处理单个页面的辅助函数，供多进程调用。
+    """
+    try:
+        # 每个进程打开自己的 PDF 文档实例
+        doc = fitz.open(input_pdf_path)
+        page = doc.load_page(page_num)
+        pix = page.get_pixmap(dpi=config.dpi)
+        img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
+            pix.height, pix.width, pix.n
+        )
+
+        # 如果图像是灰度，则转换为 RGB
+        if img.ndim == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+
+        # 1. 移除水印
+        if config.remove_watermark:
+            img = remove_watermark(
+                img,
+                method=config.watermark_method,
+                algorithm=config.inpainting_algorithm,
+                threshold=config.watermark_threshold,
+            )
+
+        # 2. 增强图像
+        if config.enhance_image:
+            img = enhance_image(
+                img,
+                contrast_level=config.contrast_level,
+                denoising_method=config.denoising_method,
+                denoising_kernel=config.denoising_kernel,
+                sharpening=config.sharpening,
+                sharpening_strength=config.sharpening_strength,
+            )
+
+        # 3. 转换为灰度
+        if config.convert_grayscale:
+            img = convert_grayscale(
+                img,
+                quant_levels=config.grayscale_quant_levels,
+                scale_factor=config.grayscale_scale_factor,
+                smoothing_method=config.grayscale_smoothing_method,
+                smoothing_kernel=config.grayscale_smoothing_kernel,
+            )
+
+        # 4. 校准倾斜
+        grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        angle = determine_skew(grayscale)
+
+        if angle is not None:
+            corrected_img = rotate_image(img, angle, background=config.background_color)
+        else:
+            corrected_img = img
+
+        # 保存校正后的图像到临时文件夹
+        img_path = os.path.join(temp_folder, f"page_{page_num}.png")
+        cv2.imwrite(img_path, corrected_img)
+
+        doc.close()
+        return page_num, img_path
+    except Exception as e:
+        logging.error(f"Error processing page {page_num}: {e}")
+        return page_num, None
+
+
 def deskew_pdf(
     input_pdf_path,
     output_pdf_path,
@@ -223,118 +291,58 @@ def deskew_pdf(
 
     try:
         total_pages = len(pdf_document)
-        for page_num in range(total_pages):
-            # ... (rest of the loop)
-            # 检查是否需要取消处理
-            if is_running_callback and not is_running_callback():
-                if status_callback:
-                    status_callback("Processing cancelled.")
-                logging.info("Processing cancelled by user.")
-                return
+        pdf_document.close()  # 关闭主进程中的文档，让子进程自己打开
 
-            # 发送当前页数
-            if current_page_callback:
-                current_page_callback(page_num + 1)
+        results = [None] * total_pages
+        completed_count = 0
 
-            # 基本进度计算
-            base_progress = int((page_num / total_pages) * 100)
-            if progress_callback:
-                progress_callback(base_progress)
+        # 使用多进程并行处理页面
+        max_workers = min(os.cpu_count() or 4, total_pages)
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=max_workers
+        ) as executor:
+            future_to_page = {
+                executor.submit(
+                    process_single_page, i, input_pdf_path, config, temp_folder
+                ): i
+                for i in range(total_pages)
+            }
 
-            # 将页面渲染为图像
-            page = pdf_document.load_page(page_num)
-            pix = page.get_pixmap(dpi=config.dpi)
-            img: np.ndarray = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
-                pix.height, pix.width, pix.n
-            )
+            for future in concurrent.futures.as_completed(future_to_page):
+                # 检查是否需要取消处理
+                if is_running_callback and not is_running_callback():
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    if status_callback:
+                        status_callback("Processing cancelled.")
+                    logging.info("Processing cancelled by user.")
+                    return
 
-            # 如果图像是灰度，则转换为 RGB
-            if img.ndim == 2:
-                img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+                try:
+                    page_num, img_path = future.result()
+                    if img_path:
+                        results[page_num] = img_path
 
-            # 图像预处理
-            # 1. 根据用户选择移除水印
-            if config.remove_watermark:
-                img = remove_watermark(
-                    img,
-                    method=config.watermark_method,
-                    algorithm=config.inpainting_algorithm,
-                    threshold=config.watermark_threshold,
-                )
-                if progress_callback:
-                    progress_callback(base_progress + 5)
-                if status_callback:
-                    status_callback("Removing watermarks...")
+                    completed_count += 1
 
-            # 2. 根据用户选择增强图像
-            if config.enhance_image:
-                img = enhance_image(
-                    img,
-                    contrast_level=config.contrast_level,
-                    denoising_method=config.denoising_method,
-                    denoising_kernel=config.denoising_kernel,
-                    sharpening=config.sharpening,
-                    sharpening_strength=config.sharpening_strength,
-                )
-                if progress_callback:
-                    progress_callback(base_progress + 10)
-                if status_callback:
-                    status_callback("Enhancing image readability...")
+                    # 更新进度和状态
+                    if progress_callback:
+                        progress_callback(int((completed_count / total_pages) * 100))
+                    if current_page_callback:
+                        current_page_callback(completed_count)
+                    if status_callback:
+                        status_callback(
+                            f"Processed page {completed_count}/{total_pages}"
+                        )
 
-            # 3. 根据用户选择转换为灰度图像
-            if config.convert_grayscale:
-                img = convert_grayscale(
-                    img,
-                    quant_levels=config.grayscale_quant_levels,
-                    scale_factor=config.grayscale_scale_factor,
-                    smoothing_method=config.grayscale_smoothing_method,
-                    smoothing_kernel=config.grayscale_smoothing_kernel,
-                )
-                if progress_callback:
-                    progress_callback(base_progress + 15)
-                if status_callback:
-                    status_callback("Converting to grayscale...")
+                except Exception as e:
+                    logging.error(f"Page processing generated an exception: {e}")
 
-            # 转换为灰度图像并确定倾斜角度
-            grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            angle = determine_skew(grayscale)
+        # 过滤掉处理失败的页面（如果有）
+        output_images = [r for r in results if r is not None]
 
-            # 如果检测到角度则进行校正
-            if angle is not None:
-                logging.info(
-                    f"Detected skew angle {angle} degrees on page {page_num + 1}"
-                )
-                if status_callback:
-                    status_callback(
-                        f"Detected skew angle {angle} degrees on page {page_num + 1}"
-                    )
-                # 旋转图像校正倾斜，使用自定义背景颜色
-                corrected_img = rotate_image(
-                    img, angle, background=config.background_color
-                )
-            else:
-                logging.info(f"No skew detected on page {page_num + 1}")
-                if status_callback:
-                    status_callback(f"No skew detected on page {page_num + 1}")
-                corrected_img = img
+        if not output_images:
+            raise RuntimeError("No pages were successfully processed.")
 
-            if progress_callback:
-                progress_callback(base_progress + 20)
-            if status_callback:
-                status_callback("Detecting and correcting skew...")
-
-            # 保存校正后的图像到临时文件夹
-            corrected_img_path = os.path.join(temp_folder, f"page_{page_num}.png")
-            cv2.imwrite(corrected_img_path, corrected_img)
-            output_images.append(corrected_img_path)
-
-            if progress_callback:
-                progress_callback(base_progress + 25)
-            if status_callback:
-                status_callback("Saving corrected images...")
-
-        if progress_callback:
-            progress_callback(100)
         if status_callback:
             status_callback("Generating output PDF...")
 
@@ -356,8 +364,6 @@ def deskew_pdf(
         raise e
 
     finally:
-        if "pdf_document" in locals():
-            pdf_document.close()
         # 清理临时文件夹
         for img_path in output_images:
             try:

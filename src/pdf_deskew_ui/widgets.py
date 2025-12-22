@@ -1,11 +1,13 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QProgressBar,
     QPushButton,
+    QSlider,
     QSpinBox,
     QTabWidget,
     QTextEdit,
@@ -73,11 +75,12 @@ class ConfigWidget(QWidget):
         main_layout = QVBoxLayout(self)
         self.tabs = QTabWidget()
 
-        # Basic Tab
+        # 1. Basic Tab
         self.basic_tab = QWidget()
         basic_layout = QVBoxLayout(self.basic_tab)
         self.default_checkbox = QCheckBox(self.t["use_defaults"])
         self.default_checkbox.setChecked(True)
+        self.default_checkbox.stateChanged.connect(self.toggle_settings)
         basic_layout.addWidget(self.default_checkbox)
 
         dpi_layout = QHBoxLayout()
@@ -85,27 +88,119 @@ class ConfigWidget(QWidget):
         self.dpi_spin = QSpinBox()
         self.dpi_spin.setRange(72, 1200)
         self.dpi_spin.setValue(300)
+        self.dpi_spin.setEnabled(False)
         dpi_layout.addWidget(self.dpi_label)
         dpi_layout.addWidget(self.dpi_spin)
         basic_layout.addLayout(dpi_layout)
 
         self.tabs.addTab(self.basic_tab, self.t["tab_basic"])
-        # ... other tabs would go here ...
+
+        # 2. Watermark Tab
+        self.watermark_tab = QWidget()
+        watermark_layout = QVBoxLayout(self.watermark_tab)
+        self.remove_watermark_checkbox = QCheckBox(self.t["remove_watermark"])
+        self.remove_watermark_checkbox.setChecked(False)
+        self.remove_watermark_checkbox.stateChanged.connect(
+            self.toggle_watermark_options
+        )
+        watermark_layout.addWidget(self.remove_watermark_checkbox)
+
+        method_layout = QHBoxLayout()
+        self.watermark_method_label = QLabel(self.t["watermark_removal_method"])
+        self.watermark_method_combo = QComboBox()
+        self.watermark_method_combo.addItems(["Inpainting"])
+        self.watermark_method_combo.setEnabled(False)
+        method_layout.addWidget(self.watermark_method_label)
+        method_layout.addWidget(self.watermark_method_combo)
+        watermark_layout.addLayout(method_layout)
+
+        threshold_layout = QHBoxLayout()
+        self.watermark_threshold_label = QLabel(self.t["watermark_mask_threshold"])
+        self.watermark_threshold_spin = QSpinBox()
+        self.watermark_threshold_spin.setRange(0, 255)
+        self.watermark_threshold_spin.setValue(127)
+        self.watermark_threshold_spin.setEnabled(False)
+        threshold_layout.addWidget(self.watermark_threshold_label)
+        threshold_layout.addWidget(self.watermark_threshold_spin)
+        watermark_layout.addLayout(threshold_layout)
+
+        self.tabs.addTab(self.watermark_tab, self.t["tab_watermark"])
+
+        # 3. Enhance Tab
+        self.enhance_tab = QWidget()
+        enhance_layout = QVBoxLayout(self.enhance_tab)
+        self.enhance_image_checkbox = QCheckBox(self.t["enhance_image"])
+        self.enhance_image_checkbox.setChecked(False)
+        self.enhance_image_checkbox.stateChanged.connect(self.toggle_enhance_options)
+        enhance_layout.addWidget(self.enhance_image_checkbox)
+
+        contrast_layout = QHBoxLayout()
+        self.contrast_level_label = QLabel(self.t["contrast_level"])
+        self.contrast_level_slider = QSlider(Qt.Orientation.Horizontal)
+        self.contrast_level_slider.setRange(1, 3)
+        self.contrast_level_slider.setValue(2)
+        self.contrast_level_slider.setEnabled(False)
+        contrast_layout.addWidget(self.contrast_level_label)
+        contrast_layout.addWidget(self.contrast_level_slider)
+        enhance_layout.addLayout(contrast_layout)
+
+        self.tabs.addTab(self.enhance_tab, self.t["tab_enhance"])
+
+        # 4. Grayscale Tab
+        self.grayscale_tab = QWidget()
+        grayscale_layout = QVBoxLayout(self.grayscale_tab)
+        self.convert_grayscale_checkbox = QCheckBox(self.t["convert_grayscale"])
+        self.convert_grayscale_checkbox.setChecked(False)
+        self.convert_grayscale_checkbox.stateChanged.connect(
+            self.toggle_grayscale_options
+        )
+        grayscale_layout.addWidget(self.convert_grayscale_checkbox)
+
+        self.tabs.addTab(self.grayscale_tab, self.t["tab_grayscale"])
 
         main_layout.addWidget(self.tabs)
 
+    def toggle_settings(self, state):
+        enabled = state == Qt.CheckState.Unchecked.value
+        self.dpi_spin.setEnabled(enabled)
+
+    def toggle_watermark_options(self, state):
+        enabled = state == Qt.CheckState.Checked.value
+        self.watermark_method_combo.setEnabled(enabled)
+        self.watermark_threshold_spin.setEnabled(enabled)
+
+    def toggle_enhance_options(self, state):
+        enabled = state == Qt.CheckState.Checked.value
+        self.contrast_level_slider.setEnabled(enabled)
+
+    def toggle_grayscale_options(self, state):
+        pass
+
     def get_config(self) -> DeskewConfig:
-        # Simplified for now
         return DeskewConfig(
             dpi=self.dpi_spin.value(),
-            # ... other fields ...
+            remove_watermark=self.remove_watermark_checkbox.isChecked(),
+            watermark_threshold=self.watermark_threshold_spin.value(),
+            enhance_image=self.enhance_image_checkbox.isChecked(),
+            contrast_level=self.contrast_level_slider.value(),
+            convert_grayscale=self.convert_grayscale_checkbox.isChecked(),
         )
 
     def update_translations(self, t):
         self.t = t
         self.default_checkbox.setText(t["use_defaults"])
         self.dpi_label.setText(t["render_dpi"])
+        self.remove_watermark_checkbox.setText(t["remove_watermark"])
+        self.watermark_method_label.setText(t["watermark_removal_method"])
+        self.watermark_threshold_label.setText(t["watermark_mask_threshold"])
+        self.enhance_image_checkbox.setText(t["enhance_image"])
+        self.contrast_level_label.setText(t["contrast_level"])
+        self.convert_grayscale_checkbox.setText(t["convert_grayscale"])
+
         self.tabs.setTabText(0, t["tab_basic"])
+        self.tabs.setTabText(1, t["tab_watermark"])
+        self.tabs.setTabText(2, t["tab_enhance"])
+        self.tabs.setTabText(3, t["tab_grayscale"])
 
 
 class StatusWidget(QWidget):
