@@ -41,12 +41,12 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.current_language: Language = Language.CHINESE
         self.translations: dict[str, dict[str, str]] = self.load_translations()
-        
+
         # 预览状态
         self.zoom_factor = 1.0
         self.before_pixmap: QPixmap | None = None
         self.after_pixmap: QPixmap | None = None
-        
+
         self.init_ui()
 
     def load_translations(self) -> dict[str, dict[str, str]]:
@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
         self.sidebar.setWidgetResizable(True)
         self.sidebar.setFrameShape(QFrame.Shape.NoFrame)
         self.sidebar.setMinimumWidth(0)  # 允许折叠到 0
-        self.sidebar.setMaximumWidth(1000) # 允许较大宽度
+        self.sidebar.setMaximumWidth(1000)  # 允许较大宽度
 
         sidebar_content = QWidget()
         sidebar_layout = QVBoxLayout(sidebar_content)
@@ -163,12 +163,12 @@ class MainWindow(QMainWindow):
         # 预览控制
         preview_header = QHBoxLayout()
         preview_header.setContentsMargins(10, 10, 10, 10)
-        
+
         self.toggle_sidebar_button = QPushButton("◀")
         self.toggle_sidebar_button.setFixedSize(30, 30)
         self.toggle_sidebar_button.setCheckable(True)
         self.toggle_sidebar_button.clicked.connect(self.toggle_sidebar)
-        
+
         self.preview_page_label = QLabel()
         self.preview_page_spin = QSpinBox()
         self.preview_page_spin.setMinimum(1)
@@ -179,15 +179,15 @@ class MainWindow(QMainWindow):
         self.zoom_out_button = QPushButton("-")
         self.zoom_out_button.setFixedSize(30, 30)
         self.zoom_out_button.clicked.connect(self.zoom_out)
-        
+
         self.zoom_label = QLabel("100%")
         self.zoom_label.setFixedWidth(50)
         self.zoom_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
+
         self.zoom_in_button = QPushButton("+")
         self.zoom_in_button.setFixedSize(30, 30)
         self.zoom_in_button.clicked.connect(self.zoom_in)
-        
+
         self.zoom_reset_button = QPushButton("Reset")
         self.zoom_reset_button.clicked.connect(self.zoom_reset)
 
@@ -460,16 +460,16 @@ class MainWindow(QMainWindow):
     def display_before_after(self, before_path, after_path):
         self.before_pixmap = QPixmap(before_path)
         self.after_pixmap = QPixmap(after_path)
-        
+
         # 自动重置缩放以适应窗口
         self.zoom_factor = 1.0
         self.update_preview_images()
-        
+
         # 添加淡入动画
         for label in [self.before_label, self.after_label]:
             opacity_effect = QGraphicsOpacityEffect(label)
             label.setGraphicsEffect(opacity_effect)
-            
+
             anim = QPropertyAnimation(opacity_effect, b"opacity")
             anim.setDuration(500)
             anim.setStartValue(0.0)
@@ -480,7 +480,7 @@ class MainWindow(QMainWindow):
             if not hasattr(self, "_animations"):
                 self._animations = []
             self._animations.append(anim)
-        
+
         try:
             os.remove(before_path)
             os.remove(after_path)
@@ -493,14 +493,14 @@ class MainWindow(QMainWindow):
             return
 
         self.zoom_label.setText(f"{int(self.zoom_factor * 100)}%")
-        
+
         for label, pixmap in [
             (self.before_label, self.before_pixmap),
             (self.after_label, self.after_pixmap),
         ]:
             if pixmap.isNull():
                 continue
-                
+
             scaled_pixmap = pixmap.scaled(
                 pixmap.size() * self.zoom_factor,
                 Qt.AspectRatioMode.KeepAspectRatio,
@@ -526,19 +526,21 @@ class MainWindow(QMainWindow):
         """切换侧边栏显示/隐藏，带动画效果"""
         start_width = self.sidebar.width()
         end_width = 0 if checked else 400
-        
+
         self.toggle_sidebar_button.setText("▶" if checked else "◀")
-        
+
         self.sidebar_animation = QPropertyAnimation(self, b"sidebar_width")
         self.sidebar_animation.setDuration(300)
         self.sidebar_animation.setStartValue(start_width)
         self.sidebar_animation.setEndValue(end_width)
         self.sidebar_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
-        
+
         if not checked:
             self.sidebar.show()
-            
-        self.sidebar_animation.finished.connect(lambda: self.on_sidebar_animation_finished(checked))
+
+        self.sidebar_animation.finished.connect(
+            lambda: self.on_sidebar_animation_finished(checked)
+        )
         self.sidebar_animation.start()
 
     def on_sidebar_animation_finished(self, checked):
@@ -548,7 +550,7 @@ class MainWindow(QMainWindow):
             # 动画结束后，恢复弹性宽度，允许用户手动调整
             self.sidebar.setMinimumWidth(0)
             self.sidebar.setMaximumWidth(1000)
-            self.sidebar.setFixedWidth(16777215) # QWIDGETSIZE_MAX
+            self.sidebar.setFixedWidth(16777215)  # QWIDGETSIZE_MAX
 
     @pyqtProperty(int)
     def sidebar_width(self):
