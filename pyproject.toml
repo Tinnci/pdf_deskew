@@ -4,7 +4,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "pdf-deskew"
-version = "0.1.2"
+dynamic = ["version"]
 description = "A GUI tool for deskewing scanned PDF documents using PyQt6 and OpenCV"
 authors = [
     {name = "driezy", email = "luoyido@outlook.com"},
@@ -56,6 +56,10 @@ distribution = false
 [tool.pdm.build]
 package-dir = "src"
 includes = ["src/deskew_tool", "src/pdf_deskew_ui"]
+
+[tool.pdm.version]
+source = "file"
+path = "src/deskew_tool/__init__.py"
 
 [tool.pdm.dev-dependencies]
 dev = [

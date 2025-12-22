@@ -1,4 +1,5 @@
 """PDF Deskew UI - GUI application for deskewing scanned PDF documents."""
 
-__version__ = "0.1.2"
+from deskew_tool import __version__
+
 __author__ = "driezy"
