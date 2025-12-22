@@ -1,4 +1,10 @@
 from dataclasses import dataclass
+from enum import Enum
+
+
+class Language(Enum):
+    ENGLISH = "en_US"
+    CHINESE = "zh_CN"
 
 
 @dataclass

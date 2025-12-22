@@ -59,6 +59,7 @@ path = "src/deskew_tool/__init__.py"
 [dependency-groups]
 dev = [
     "pytest>=7.0",
+    "pytest-cov>=4.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
 ]
@@ -86,6 +87,17 @@ select = ["E", "F", "I", "N", "W", "B", "UP"]
 ignore = ["N802"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--cov=src --cov-report=term-missing --cov-report=xml"
 filterwarnings = [
     "ignore:builtin type .* has no __module__ attribute:DeprecationWarning",
 ]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", "**/__init__.py"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80

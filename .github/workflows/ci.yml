@@ -35,5 +35,8 @@ jobs:
       - name: Run Mypy
         run: uv run mypy src
 
-      - name: Run Tests
-        run: uv run pytest
+      - name: Run Tests with Coverage
+        run: uv run pytest --cov=src --cov-report=xml --cov-report=term
+
+      - name: Check Coverage Threshold
+        run: uv run coverage report --fail-under=80
