@@ -1,7 +1,6 @@
 # src/pdf_deskew_ui/main.py
 
 import logging
-import os
 import sys
 
 from PyQt6.QtWidgets import QApplication
@@ -13,11 +12,12 @@ from .ui import MainWindow
 
 def attach_to_console():
     """在 Windows 上尝试附加到父进程的控制台，以便输出信息"""
-    if os.name == "nt":
+    if sys.platform == "win32":
         import ctypes
 
         # ATTACH_PARENT_PROCESS = -1
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        # Use getattr to avoid Mypy errors on non-Windows platforms
+        kernel32 = getattr(ctypes, "WinDLL")("kernel32", use_last_error=True)  # noqa: B009
         if kernel32.AttachConsole(-1):
             # 重新定向标准流到附加的控制台
             # 使用 'CONOUT$' 和 'CONIN$' 是 Windows 特有的特殊文件

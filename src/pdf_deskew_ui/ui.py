@@ -8,12 +8,8 @@ from typing import cast
 import cv2
 import fitz
 import numpy as np
-from PyQt6.QtCore import (
-    QEasingCurve,
-    QPropertyAnimation,
-    Qt,
-    pyqtProperty,  # type: ignore
-)
+from PyQt6 import QtCore
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QWheelEvent
 from PyQt6.QtWidgets import (
     QApplication,
@@ -39,6 +35,9 @@ from deskew_tool.deskew_pdf import process_single_page
 from pdf_deskew_ui.styles import StyleManager
 from pdf_deskew_ui.widgets import ConfigWidget, FileSelectionWidget, StatusWidget
 from pdf_deskew_ui.worker import WorkerThread
+
+# Use getattr to avoid Mypy errors with PyQt6.QtCore.pyqtProperty
+pyqtProperty = getattr(QtCore, "pyqtProperty")  # noqa: B009, N816
 
 
 class MainWindow(QMainWindow):
@@ -566,7 +565,7 @@ class MainWindow(QMainWindow):
         self.splitter.setSizes([width, self.width() - width])
 
     # Use pyqtProperty to define sidebar_width for animation
-    sidebar_width = pyqtProperty(  # type: ignore
+    sidebar_width = pyqtProperty(
         int, fget=_get_sidebar_width, fset=_set_sidebar_width
     )
 
