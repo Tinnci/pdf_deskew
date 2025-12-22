@@ -286,8 +286,8 @@ def deskew_pdf(
             status_callback(f"无法打开 PDF 文件: {e}")
         raise OSError(f"无法打开 PDF 文件: {e}") from e
 
-    output_images = []
     temp_folder = tempfile.mkdtemp(prefix="pdf_deskew_")
+    output_images: list[str] = []
 
     try:
         total_pages = len(pdf_document)
@@ -338,7 +338,7 @@ def deskew_pdf(
                     logging.error(f"Page processing generated an exception: {e}")
 
         # 过滤掉处理失败的页面（如果有）
-        output_images = [r for r in results if r is not None]
+        output_images = [r for r in results if r is not None]  # type: ignore
 
         if not output_images:
             raise RuntimeError("No pages were successfully processed.")

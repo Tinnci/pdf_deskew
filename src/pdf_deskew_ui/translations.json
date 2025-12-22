@@ -69,7 +69,9 @@
         "grayscale_scaling": "Grayscale Scaling:",
         "grayscale_scale_factor": "Scale Factor:",
         "grayscale_smoothing_method": "Grayscale Smoothing Method:",
-        "grayscale_smoothing_kernel": "Smoothing Kernel Size:"
+        "grayscale_smoothing_kernel": "Smoothing Kernel Size:",
+        "zoom_reset": "Reset Zoom",
+        "zoom_label": "Zoom:"
     },
     "zh_CN": {
         "window_title": "PDF 校准工具",
@@ -141,6 +143,8 @@
         "grayscale_scaling": "灰度缩放:",
         "grayscale_scale_factor": "缩放比例:",
         "grayscale_smoothing_method": "灰度平滑方法:",
-        "grayscale_smoothing_kernel": "平滑内核大小:"
+        "grayscale_smoothing_kernel": "平滑内核大小:",
+        "zoom_reset": "重置缩放",
+        "zoom_label": "缩放:"
     }
 }

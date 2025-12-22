@@ -46,65 +46,72 @@ class TestDeskewPDF(unittest.TestCase):
             deskew_pdf(input_pdf, output_pdf)
 
     def test_rotate_image(self):
-        from deskew_tool.deskew_pdf import rotate_image
         import numpy as np
+
+        from deskew_tool.deskew_pdf import rotate_image
+
         img = np.zeros((100, 100, 3), dtype=np.uint8)
         rotated = rotate_image(img, 45)
         self.assertEqual(rotated.shape[2], 3)
 
     def test_remove_watermark(self):
-        from deskew_tool.deskew_pdf import remove_watermark
         import numpy as np
+
+        from deskew_tool.deskew_pdf import remove_watermark
+
         img = np.ones((100, 100, 3), dtype=np.uint8) * 255
         # Add a "watermark"
         img[40:60, 40:60] = 0
         result = remove_watermark(img, algorithm="Navier-Stokes")
         self.assertEqual(result.shape, img.shape)
-        
+
         # Test unsupported method
         result_unsupported = remove_watermark(img, method="Unknown")
         self.assertTrue(np.array_equal(img, result_unsupported))
 
     def test_enhance_image(self):
-        from deskew_tool.deskew_pdf import enhance_image
         import numpy as np
+
+        from deskew_tool.deskew_pdf import enhance_image
+
         img = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
-        
+
         # Test different contrast levels
         for level in [1, 2, 3, 4]:
             result = enhance_image(img, contrast_level=level, sharpening=True)
             self.assertEqual(result.shape, img.shape)
-            
+
         # Test different denoising methods
         result_median = enhance_image(img, denoising_method="Median")
         self.assertEqual(result_median.shape, img.shape)
-        
+
         result_none = enhance_image(img, denoising_method="None")
         self.assertEqual(result_none.shape, img.shape)
 
     def test_convert_grayscale(self):
-        from deskew_tool.deskew_pdf import convert_grayscale
         import numpy as np
+
+        from deskew_tool.deskew_pdf import convert_grayscale
+
         img = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
-        
+
         # Test scaling and smoothing
         result = convert_grayscale(img, scale_factor=2, smoothing_method="Median")
         self.assertEqual(result.shape[0], 200)
         self.assertEqual(result.shape[1], 200)
-        
+
         result_none = convert_grayscale(img, smoothing_method="None")
         self.assertEqual(result_none.shape, img.shape)
 
     def test_process_single_page(self):
-        from deskew_tool.deskew_pdf import process_single_page
         import tempfile
-        
+
+        from deskew_tool.deskew_pdf import process_single_page
+
         config = DeskewConfig(
-            remove_watermark=True,
-            enhance_image=True,
-            convert_grayscale=True
+            remove_watermark=True, enhance_image=True, convert_grayscale=True
         )
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             page_num, img_path = process_single_page(0, self.input_pdf, config, tmpdir)
             self.assertEqual(page_num, 0)

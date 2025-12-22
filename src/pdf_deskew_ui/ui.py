@@ -3,22 +3,27 @@ import logging
 import os
 import tempfile
 from pathlib import Path
+from typing import cast
 
 import cv2
 import fitz
 import numpy as np
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPixmap
+from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt, pyqtProperty
+from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QWheelEvent
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
     QFileDialog,
+    QFrame,
+    QGraphicsOpacityEffect,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSpinBox,
+    QSplitter,
     QVBoxLayout,
     QWidget,
 )
@@ -26,6 +31,7 @@ from qt_material import apply_stylesheet
 
 from deskew_tool.config import Language
 from deskew_tool.deskew_pdf import process_single_page
+from pdf_deskew_ui.styles import StyleManager
 from pdf_deskew_ui.widgets import ConfigWidget, FileSelectionWidget, StatusWidget
 from pdf_deskew_ui.worker import WorkerThread
 
@@ -33,16 +39,24 @@ from pdf_deskew_ui.worker import WorkerThread
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.current_language = Language.CHINESE
-        self.translations = self.load_translations()
+        self.current_language: Language = Language.CHINESE
+        self.translations: dict[str, dict[str, str]] = self.load_translations()
+        
+        # 预览状态
+        self.zoom_factor = 1.0
+        self.before_pixmap: QPixmap | None = None
+        self.after_pixmap: QPixmap | None = None
+        
         self.init_ui()
 
-    def load_translations(self) -> dict:
+    def load_translations(self) -> dict[str, dict[str, str]]:
         try:
             trans_path = Path(__file__).parent / "translations.json"
             with open(trans_path, encoding="utf-8") as f:
                 data = json.load(f)
-                return data if isinstance(data, dict) else {}
+                if isinstance(data, dict):
+                    return cast(dict[str, dict[str, str]], data)
+                return {}
         except Exception as e:
             logging.error(f"Failed to load translations: {e}")
             return {
@@ -56,95 +70,200 @@ class MainWindow(QMainWindow):
         return self.translations.get(lang, self.translations[Language.CHINESE.value])
 
     def init_ui(self):
-        """初始化用户界面 - 使用组件化布局"""
+        """初始化用户界面 - 使用侧边栏布局"""
         self.setAcceptDrops(True)
+        self.setWindowTitle(self.get_translation()["window_title"])
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # 使用 QSplitter 实现可调节的侧边栏
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # --- 左侧面板 (侧边栏) ---
+        self.sidebar = QScrollArea()
+        self.sidebar.setWidgetResizable(True)
+        self.sidebar.setFrameShape(QFrame.Shape.NoFrame)
+        self.sidebar.setMinimumWidth(0)  # 允许折叠到 0
+        self.sidebar.setMaximumWidth(1000) # 允许较大宽度
+
+        sidebar_content = QWidget()
+        sidebar_layout = QVBoxLayout(sidebar_content)
+        sidebar_layout.setContentsMargins(15, 15, 15, 15)
+        sidebar_layout.setSpacing(20)
 
         # 1. 文件选择组件
         self.file_widget = FileSelectionWidget(self.get_translation())
         self.file_widget.input_browse.clicked.connect(self.browse_input)
         self.file_widget.output_browse.clicked.connect(self.browse_output)
-        main_layout.addWidget(self.file_widget)
+        sidebar_layout.addWidget(self.file_widget)
 
         # 2. 配置组件
         self.config_widget = ConfigWidget(self.get_translation())
-        main_layout.addWidget(self.config_widget)
+        sidebar_layout.addWidget(self.config_widget)
 
         # 3. 状态组件
         self.status_widget = StatusWidget(self.get_translation())
-        main_layout.addWidget(self.status_widget)
+        sidebar_layout.addWidget(self.status_widget)
 
-        # 4. 控制按钮
-        control_layout = QHBoxLayout()
+        # 4. 控制按钮与设置
+        control_frame = QFrame()
+        control_layout = QVBoxLayout(control_frame)
+        control_layout.setContentsMargins(0, 0, 0, 0)
 
-        # 语言切换
-        self.language_label = QLabel()
+        # 语言与主题行
+        settings_row = QHBoxLayout()
         self.language_combo = QComboBox()
         self.language_combo.addItems(["中文", "English"])
-        self.language_combo.setCurrentIndex(
-            0 if self.current_language == Language.CHINESE else 1
-        )
+        lang_idx = 0 if self.current_language == Language.CHINESE else 1
+        self.language_combo.setCurrentIndex(lang_idx)
         self.language_combo.currentIndexChanged.connect(self.change_language)
-        control_layout.addWidget(self.language_label)
-        control_layout.addWidget(self.language_combo)
 
-        # 主题切换
-        self.theme_label = QLabel()
         self.theme_combo = QComboBox()
         self.theme_combo.addItems(["Light", "Dark", "Blue"])
         self.theme_combo.currentIndexChanged.connect(self.change_theme)
-        control_layout.addWidget(self.theme_label)
-        control_layout.addWidget(self.theme_combo)
 
-        control_layout.addStretch()
+        settings_row.addWidget(QLabel("Lang:"))
+        settings_row.addWidget(self.language_combo)
+        settings_row.addWidget(QLabel("Theme:"))
+        settings_row.addWidget(self.theme_combo)
+        control_layout.addLayout(settings_row)
 
-        self.help_button = QPushButton()
-        self.help_button.clicked.connect(self.show_help)
-        control_layout.addWidget(self.help_button)
-
+        # 操作按钮
+        actions_row = QHBoxLayout()
         self.run_button = QPushButton()
         self.run_button.clicked.connect(self.start_processing)
+
         self.cancel_button = QPushButton("Cancel")
         self.cancel_button.setEnabled(False)
         self.cancel_button.clicked.connect(self.cancel_processing)
 
-        control_layout.addWidget(self.run_button)
-        control_layout.addWidget(self.cancel_button)
-        main_layout.addLayout(control_layout)
+        self.help_button = QPushButton("?")
+        self.help_button.setFixedSize(30, 30)
+        self.help_button.clicked.connect(self.show_help)
 
-        # 5. 预览控制
-        preview_control_layout = QHBoxLayout()
+        actions_row.addWidget(self.run_button, 3)
+        actions_row.addWidget(self.cancel_button, 1)
+        actions_row.addWidget(self.help_button, 0)
+        control_layout.addLayout(actions_row)
+
+        sidebar_layout.addWidget(control_frame)
+        sidebar_layout.addStretch()
+
+        self.sidebar.setWidget(sidebar_content)
+        self.splitter.addWidget(self.sidebar)
+
+        # --- 右侧面板 (预览区域) ---
+        self.preview_panel = QWidget()
+        preview_layout = QVBoxLayout(self.preview_panel)
+
+        # 预览控制
+        preview_header = QHBoxLayout()
+        preview_header.setContentsMargins(10, 10, 10, 10)
+        
+        self.toggle_sidebar_button = QPushButton("◀")
+        self.toggle_sidebar_button.setFixedSize(30, 30)
+        self.toggle_sidebar_button.setCheckable(True)
+        self.toggle_sidebar_button.clicked.connect(self.toggle_sidebar)
+        
         self.preview_page_label = QLabel()
         self.preview_page_spin = QSpinBox()
         self.preview_page_spin.setMinimum(1)
         self.preview_button = QPushButton()
         self.preview_button.clicked.connect(self.preview_current_page)
 
-        preview_control_layout.addWidget(self.preview_page_label)
-        preview_control_layout.addWidget(self.preview_page_spin)
-        preview_control_layout.addWidget(self.preview_button)
-        preview_control_layout.addStretch()
-        main_layout.addLayout(preview_control_layout)
+        # 缩放控制
+        self.zoom_out_button = QPushButton("-")
+        self.zoom_out_button.setFixedSize(30, 30)
+        self.zoom_out_button.clicked.connect(self.zoom_out)
+        
+        self.zoom_label = QLabel("100%")
+        self.zoom_label.setFixedWidth(50)
+        self.zoom_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        self.zoom_in_button = QPushButton("+")
+        self.zoom_in_button.setFixedSize(30, 30)
+        self.zoom_in_button.clicked.connect(self.zoom_in)
+        
+        self.zoom_reset_button = QPushButton("Reset")
+        self.zoom_reset_button.clicked.connect(self.zoom_reset)
 
-        # 6. 预览区域
-        preview_layout = QHBoxLayout()
-        self.before_label = QLabel()
-        self.after_label = QLabel()
-        self.before_label.setMinimumSize(200, 200)
-        self.after_label.setMinimumSize(200, 200)
-        self.before_label.setStyleSheet("border: 1px solid #555;")
-        self.after_label.setStyleSheet("border: 1px solid #555;")
-        self.before_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.after_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        preview_layout.addWidget(self.before_label)
-        preview_layout.addWidget(self.after_label)
-        main_layout.addLayout(preview_layout)
+        preview_header.addWidget(self.toggle_sidebar_button)
+        preview_header.addSpacing(10)
+        preview_header.addWidget(self.preview_page_label)
+        preview_header.addWidget(self.preview_page_spin)
+        preview_header.addWidget(self.preview_button)
+        preview_header.addSpacing(20)
+        preview_header.addWidget(self.zoom_out_button)
+        preview_header.addWidget(self.zoom_label)
+        preview_header.addWidget(self.zoom_in_button)
+        preview_header.addWidget(self.zoom_reset_button)
+        preview_header.addStretch()
+        preview_layout.addLayout(preview_header)
 
+        # 预览滚动区域
+        self.preview_scroll = QScrollArea()
+        self.preview_scroll.setWidgetResizable(True)
+        self.preview_scroll.setFrameShape(QFrame.Shape.NoFrame)
+
+        preview_container = QWidget()
+        preview_images_layout = QHBoxLayout(preview_container)
+        preview_images_layout.setSpacing(20)
+
+        self.before_label = QLabel("Before")
+        self.after_label = QLabel("After")
+        for label in [self.before_label, self.after_label]:
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            label.setMinimumSize(400, 500)
+            preview_images_layout.addWidget(label)
+
+        self.preview_scroll.setWidget(preview_container)
+        preview_layout.addWidget(self.preview_scroll)
+
+        self.splitter.addWidget(self.preview_panel)
+
+        # 设置初始比例
+        self.splitter.setSizes([400, 800])
+        main_layout.addWidget(self.splitter)
+
+        self.update_ui_styles()
         self.init_ui_texts()
-        self.resize(900, 800)
+        self.resize(1200, 800)
+
+    def update_ui_styles(self):
+        """更新全局 UI 样式"""
+        theme = StyleManager.get_theme()
+        self.setStyleSheet(StyleManager.get_main_style())
+        self.sidebar.setStyleSheet(StyleManager.get_sidebar_style())
+        self.preview_panel.setStyleSheet(StyleManager.get_preview_panel_style())
+
+        for label in [self.before_label, self.after_label]:
+            label.setStyleSheet(StyleManager.get_preview_label_style())
+
+        self.run_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {theme.primary};
+                color: {theme.surface};
+                font-weight: bold;
+                padding: 10px;
+                border-radius: 4px;
+            }}
+            QPushButton:hover {{
+                background-color: {theme.primary};
+                opacity: 0.9;
+            }}
+            QPushButton:disabled {{
+                background-color: {theme.border};
+            }}
+        """)
+
+        # 通知子组件更新样式
+        self.file_widget.update_style()
+        self.config_widget.update_style()
+        self.status_widget.update_style()
 
     def init_ui_texts(self):
         """根据当前语言设置所有UI文本"""
@@ -155,13 +274,13 @@ class MainWindow(QMainWindow):
         self.config_widget.update_translations(t)
         self.status_widget.update_translations(t)
 
-        self.language_label.setText(t["language"])
-        self.theme_label.setText(t.get("theme", "Theme:"))
         self.run_button.setText(t["start_deskew"])
         self.cancel_button.setText(t.get("cancel", "Cancel"))
-        self.help_button.setText(t.get("help", "Help"))
         self.preview_page_label.setText(t.get("page", "Page:"))
         self.preview_button.setText(t.get("preview", "Preview Page"))
+        self.zoom_reset_button.setText(t.get("zoom_reset", "Reset Zoom"))
+        self.before_label.setText("Before")
+        self.after_label.setText("After")
 
     def change_language(self, index):
         """切换语言"""
@@ -170,9 +289,19 @@ class MainWindow(QMainWindow):
 
     def change_theme(self, index):
         """切换主题"""
+        theme_names = ["light", "dark", "blue"]
+        selected_name = theme_names[index] if index < len(theme_names) else "light"
+
+        # 更新 StyleManager
+        StyleManager.set_theme(selected_name)
+
+        # 应用 qt-material 主题
         themes = ["light_blue.xml", "dark_teal.xml", "blue.xml"]
         selected_theme = themes[index] if index < len(themes) else "light_blue.xml"
         apply_stylesheet(QApplication.instance(), theme=selected_theme)
+
+        # 更新自定义样式
+        self.update_ui_styles()
 
     def show_help(self):
         """显示帮助信息"""
@@ -217,9 +346,6 @@ class MainWindow(QMainWindow):
             if after_path:
                 self.display_before_after(before_path, after_path)
 
-            # 注意：display_before_after 会删除文件，但不会删除文件夹
-            # 我们在这里不删除文件夹，因为 display_before_after 可能还在使用它
-            # （虽然目前是同步的）。实际生产中应该有更好的清理机制。
         except Exception as e:
             logging.error(f"Preview failed: {e}")
             QMessageBox.warning(self, "Preview Error", f"Failed to preview page: {e}")
@@ -332,22 +458,107 @@ class MainWindow(QMainWindow):
         self.set_ui_enabled(True)
 
     def display_before_after(self, before_path, after_path):
-        for label, path in [
-            (self.before_label, before_path),
-            (self.after_label, after_path),
+        self.before_pixmap = QPixmap(before_path)
+        self.after_pixmap = QPixmap(after_path)
+        
+        # 自动重置缩放以适应窗口
+        self.zoom_factor = 1.0
+        self.update_preview_images()
+        
+        # 添加淡入动画
+        for label in [self.before_label, self.after_label]:
+            opacity_effect = QGraphicsOpacityEffect(label)
+            label.setGraphicsEffect(opacity_effect)
+            
+            anim = QPropertyAnimation(opacity_effect, b"opacity")
+            anim.setDuration(500)
+            anim.setStartValue(0.0)
+            anim.setEndValue(1.0)
+            anim.setEasingCurve(QEasingCurve.Type.InQuad)
+            anim.start()
+            # 保持引用防止被垃圾回收
+            if not hasattr(self, "_animations"):
+                self._animations = []
+            self._animations.append(anim)
+        
+        try:
+            os.remove(before_path)
+            os.remove(after_path)
+        except Exception:
+            pass
+
+    def update_preview_images(self):
+        """根据当前缩放比例更新预览图"""
+        if not self.before_pixmap or not self.after_pixmap:
+            return
+
+        self.zoom_label.setText(f"{int(self.zoom_factor * 100)}%")
+        
+        for label, pixmap in [
+            (self.before_label, self.before_pixmap),
+            (self.after_label, self.after_pixmap),
         ]:
-            pix = QPixmap(path)
-            label.setPixmap(
-                pix.scaled(
-                    label.size(),
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
+            if pixmap.isNull():
+                continue
+                
+            scaled_pixmap = pixmap.scaled(
+                pixmap.size() * self.zoom_factor,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
             )
-            try:
-                os.remove(path)
-            except Exception:
-                pass
+            label.setPixmap(scaled_pixmap)
+            # 调整 label 大小以适应缩放后的图片，这样 ScrollArea 才能工作
+            label.setFixedSize(scaled_pixmap.size())
+
+    def zoom_in(self):
+        self.zoom_factor = min(self.zoom_factor * 1.2, 5.0)
+        self.update_preview_images()
+
+    def zoom_out(self):
+        self.zoom_factor = max(self.zoom_factor / 1.2, 0.1)
+        self.update_preview_images()
+
+    def zoom_reset(self):
+        self.zoom_factor = 1.0
+        self.update_preview_images()
+
+    def toggle_sidebar(self, checked):
+        """切换侧边栏显示/隐藏，带动画效果"""
+        start_width = self.sidebar.width()
+        end_width = 0 if checked else 400
+        
+        self.toggle_sidebar_button.setText("▶" if checked else "◀")
+        
+        self.sidebar_animation = QPropertyAnimation(self, b"sidebar_width")
+        self.sidebar_animation.setDuration(300)
+        self.sidebar_animation.setStartValue(start_width)
+        self.sidebar_animation.setEndValue(end_width)
+        self.sidebar_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        
+        if not checked:
+            self.sidebar.show()
+            
+        self.sidebar_animation.finished.connect(lambda: self.on_sidebar_animation_finished(checked))
+        self.sidebar_animation.start()
+
+    def on_sidebar_animation_finished(self, checked):
+        if checked:
+            self.sidebar.hide()
+        else:
+            # 动画结束后，恢复弹性宽度，允许用户手动调整
+            self.sidebar.setMinimumWidth(0)
+            self.sidebar.setMaximumWidth(1000)
+            self.sidebar.setFixedWidth(16777215) # QWIDGETSIZE_MAX
+
+    @pyqtProperty(int)
+    def sidebar_width(self):
+        return self.sidebar.width()
+
+    @sidebar_width.setter
+    def sidebar_width(self, width):
+        self.sidebar.setFixedWidth(width)
+        # 强制刷新布局
+        self.splitter.setSizes([width, self.width() - width])
 
     def set_ui_enabled(self, enabled):
         self.file_widget.setEnabled(enabled)
@@ -355,14 +566,31 @@ class MainWindow(QMainWindow):
         self.run_button.setEnabled(enabled)
         self.cancel_button.setEnabled(not enabled)
 
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
+    def dragEnterEvent(self, event: QDragEnterEvent | None):
+        if event:
+            mime_data = event.mimeData()
+            if mime_data and mime_data.hasUrls():
+                event.acceptProposedAction()
 
-    def dropEvent(self, event: QDropEvent):
-        for url in event.mimeData().urls():
-            path = url.toLocalFile()
-            if path.lower().endswith(".pdf"):
-                self.file_widget.input_line.setText(path)
-                self.browse_input_path(path)
-                break
+    def dropEvent(self, event: QDropEvent | None):
+        if event:
+            mime_data = event.mimeData()
+            if mime_data:
+                for url in mime_data.urls():
+                    path = url.toLocalFile()
+                    if path.lower().endswith(".pdf"):
+                        self.file_widget.input_line.setText(path)
+                        self.browse_input_path(path)
+                        break
+
+    def wheelEvent(self, event: QWheelEvent | None):
+        """处理鼠标滚轮缩放 (Ctrl + Wheel)"""
+        if event and event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+            delta = event.angleDelta().y()
+            if delta > 0:
+                self.zoom_in()
+            else:
+                self.zoom_out()
+            event.accept()
+        else:
+            super().wheelEvent(event) if event else None

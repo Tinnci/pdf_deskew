@@ -89,7 +89,7 @@ ignore = ["N802"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "--cov=src --cov-report=term-missing --cov-report=xml"
+addopts = "--cov=src --cov-report=term-missing --cov-report=xml --cov-config=pyproject.toml"
 filterwarnings = [
     "ignore:builtin type .* has no __module__ attribute:DeprecationWarning",
 ]
@@ -115,4 +115,5 @@ omit = [
     "src/pdf_deskew_ui/ui.py",
     "src/pdf_deskew_ui/widgets.py",
     "src/pdf_deskew_ui/worker.py",
+    "src/pdf_deskew_ui/styles.py",
 ]
