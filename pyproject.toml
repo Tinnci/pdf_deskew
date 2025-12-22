@@ -56,8 +56,8 @@ packages = ["src/deskew_tool", "src/pdf_deskew_ui"]
 [tool.hatch.version]
 path = "src/deskew_tool/__init__.py"
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest>=7.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
