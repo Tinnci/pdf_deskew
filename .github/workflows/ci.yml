@@ -15,7 +15,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1 libglib2.0-0
+          sudo apt-get install -y libgl1 libglib2.0-0 libegl1 libdbus-1-3 libxkbcommon-x11-0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 libxcb-xinput0 libxcb-xfixes0 xvfb
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v4
@@ -36,7 +36,7 @@ jobs:
         run: uv run mypy src
 
       - name: Run Tests with Coverage
-        run: uv run pytest --cov=src --cov-report=xml --cov-report=term
+        run: xvfb-run uv run pytest --cov=src --cov-report=xml --cov-report=term
 
       - name: Check Coverage Threshold
         run: uv run coverage report --fail-under=80
