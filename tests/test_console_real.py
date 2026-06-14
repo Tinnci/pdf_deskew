@@ -16,9 +16,7 @@ def test_windows_api_availability():
         pytest.fail(f"无法加载 kernel32.dll: {e}")
 
     # 2. 验证 AttachConsole 函数是否存在
-    assert hasattr(kernel32, "AttachConsole"), (
-        "kernel32.dll 中找不到 AttachConsole 函数"
-    )
+    assert hasattr(kernel32, "AttachConsole"), "kernel32.dll 中找不到 AttachConsole 函数"
 
     # 3. 尝试调用 AttachConsole
     # 在 pytest 环境中，进程通常已经附加到了控制台

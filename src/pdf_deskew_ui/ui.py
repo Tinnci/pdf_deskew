@@ -336,9 +336,7 @@ class MainWindow(QMainWindow):
                 if not cv2.imwrite(before_path, img_before):
                     raise OSError(f"Unable to write preview image: {before_path}")
 
-                _, after_path = process_single_page(
-                    page_num, input_pdf, config, temp_dir
-                )
+                _, after_path = process_single_page(page_num, input_pdf, config, temp_dir)
                 if not after_path:
                     raise RuntimeError("Failed to process preview page.")
 
@@ -354,9 +352,7 @@ class MainWindow(QMainWindow):
     def browse_input(self):
         """浏览选择输入PDF文件"""
         t = self.get_translation()
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, t["input_pdf"], "", "PDF Files (*.pdf)"
-        )
+        file_path, _ = QFileDialog.getOpenFileName(self, t["input_pdf"], "", "PDF Files (*.pdf)")
         if file_path:
             self.file_widget.input_line.setText(file_path)
             self.browse_input_path(file_path)
@@ -364,14 +360,8 @@ class MainWindow(QMainWindow):
     def browse_input_path(self, file_path):
         input_dir = os.path.dirname(file_path)
         input_basename = os.path.splitext(os.path.basename(file_path))[0]
-        suffix = (
-            "_deskewed.pdf"
-            if self.current_language == Language.ENGLISH
-            else "_校准.pdf"
-        )
-        self.file_widget.output_line.setText(
-            os.path.join(input_dir, f"{input_basename}{suffix}")
-        )
+        suffix = "_deskewed.pdf" if self.current_language == Language.ENGLISH else "_校准.pdf"
+        self.file_widget.output_line.setText(os.path.join(input_dir, f"{input_basename}{suffix}"))
         self.update_page_count(file_path)
 
     def update_page_count(self, file_path):
@@ -383,9 +373,7 @@ class MainWindow(QMainWindow):
     def browse_output(self):
         """浏览选择输出PDF文件"""
         t = self.get_translation()
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, t["output_pdf"], "", "PDF Files (*.pdf)"
-        )
+        file_path, _ = QFileDialog.getSaveFileName(self, t["output_pdf"], "", "PDF Files (*.pdf)")
         if file_path:
             if not file_path.lower().endswith(".pdf"):
                 file_path += ".pdf"
@@ -415,9 +403,7 @@ class MainWindow(QMainWindow):
         # 启动工作线程
         self.worker = WorkerThread(input_pdf, output_pdf, config)
         self.worker.progress.connect(self.status_widget.progress_bar.setValue)
-        self.worker.progress.connect(
-            lambda v: self.status_widget.progress_label.setText(f"{v}%")
-        )
+        self.worker.progress.connect(lambda v: self.status_widget.progress_label.setText(f"{v}%"))
         self.worker.status.connect(self.status_widget.status_text.setText)
         self.worker.status.connect(self.status_widget.log_text.append)
         self.worker.before_after.connect(self.display_before_after)
@@ -534,9 +520,7 @@ class MainWindow(QMainWindow):
         if not checked:
             self.sidebar.show()
 
-        self.sidebar_animation.finished.connect(
-            lambda: self.on_sidebar_animation_finished(checked)
-        )
+        self.sidebar_animation.finished.connect(lambda: self.on_sidebar_animation_finished(checked))
         self.sidebar_animation.start()
 
     def on_sidebar_animation_finished(self, checked):

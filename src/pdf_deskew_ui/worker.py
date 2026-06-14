@@ -94,9 +94,7 @@ class WorkerThread(QThread):
                         try:
                             os.remove(temp_path)
                         except Exception as e:
-                            logging.warning(
-                                f"Unable to remove temporary file {temp_path}: {e}"
-                            )
+                            logging.warning(f"Unable to remove temporary file {temp_path}: {e}")
 
     def update_progress_with_status(self, value):
         """更新进度并发送状态信息"""

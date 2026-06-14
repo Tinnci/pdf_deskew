@@ -137,9 +137,7 @@ class TestDeskewPDF(unittest.TestCase):
 
         from deskew_tool.deskew_pdf import process_single_page
 
-        config = DeskewConfig(
-            remove_watermark=True, enhance_image=True, convert_grayscale=True
-        )
+        config = DeskewConfig(remove_watermark=True, enhance_image=True, convert_grayscale=True)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             page_num, img_path = process_single_page(0, self.input_pdf, config, tmpdir)

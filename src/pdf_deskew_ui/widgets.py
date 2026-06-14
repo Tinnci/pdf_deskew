@@ -88,9 +88,7 @@ class FileSelectionWidget(QWidget):
         container_layout = self.container.content_layout
 
         # Drag and drop hint
-        self.drag_drop_label = QLabel(
-            self.t.get("drag_drop_hint", "Drag and drop a PDF file here")
-        )
+        self.drag_drop_label = QLabel(self.t.get("drag_drop_hint", "Drag and drop a PDF file here"))
         self.drag_drop_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         container_layout.addWidget(self.drag_drop_label)
 
@@ -134,9 +132,7 @@ class FileSelectionWidget(QWidget):
         self.input_browse.setText(t["browse"])
         self.output_label.setText(t["output_pdf"])
         self.output_browse.setText(t["browse"])
-        self.drag_drop_label.setText(
-            t.get("drag_drop_hint", "Drag and drop a PDF file here")
-        )
+        self.drag_drop_label.setText(t.get("drag_drop_hint", "Drag and drop a PDF file here"))
 
     def update_style(self):
         theme = StyleManager.get_theme()
@@ -203,9 +199,7 @@ class ConfigWidget(QWidget):
         watermark_layout = QVBoxLayout(self.watermark_tab)
         self.remove_watermark_checkbox = QCheckBox(self.t["remove_watermark"])
         self.remove_watermark_checkbox.setChecked(False)
-        self.remove_watermark_checkbox.stateChanged.connect(
-            self.toggle_watermark_options
-        )
+        self.remove_watermark_checkbox.stateChanged.connect(self.toggle_watermark_options)
         watermark_layout.addWidget(self.remove_watermark_checkbox)
 
         method_layout = QHBoxLayout()
@@ -256,9 +250,7 @@ class ConfigWidget(QWidget):
         grayscale_layout = QVBoxLayout(self.grayscale_tab)
         self.convert_grayscale_checkbox = QCheckBox(self.t["convert_grayscale"])
         self.convert_grayscale_checkbox.setChecked(False)
-        self.convert_grayscale_checkbox.stateChanged.connect(
-            self.toggle_grayscale_options
-        )
+        self.convert_grayscale_checkbox.stateChanged.connect(self.toggle_grayscale_options)
         grayscale_layout.addWidget(self.convert_grayscale_checkbox)
         grayscale_layout.addStretch()
 
@@ -411,9 +403,7 @@ class StatusWidget(QWidget):
                 margin: 0.5px;
             }}
         """)
-        self.status_text.setStyleSheet(
-            f"color: {theme.text_secondary}; font-style: italic;"
-        )
+        self.status_text.setStyleSheet(f"color: {theme.text_secondary}; font-style: italic;")
         self.log_text.setStyleSheet(f"""
             background-color: {theme.background};
             border: 1px solid {theme.border};

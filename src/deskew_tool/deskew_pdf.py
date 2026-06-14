@@ -125,12 +125,8 @@ def rotate_image(
     """
     old_height, old_width = image.shape[:2]
     angle_radian = np.radians(angle)
-    new_width = abs(np.sin(angle_radian) * old_height) + abs(
-        np.cos(angle_radian) * old_width
-    )
-    new_height = abs(np.sin(angle_radian) * old_width) + abs(
-        np.cos(angle_radian) * old_height
-    )
+    new_width = abs(np.sin(angle_radian) * old_height) + abs(np.cos(angle_radian) * old_width)
+    new_height = abs(np.sin(angle_radian) * old_width) + abs(np.cos(angle_radian) * old_height)
 
     image_center = tuple(np.array(image.shape[1::-1]) / 2)
     rot_mat = cv2.getRotationMatrix2D(image_center, angle, 1.0)
@@ -140,7 +136,7 @@ def rotate_image(
     return cv2.warpAffine(
         image,
         rot_mat,
-        (int(round(new_width)), int(round(new_height))),
+        (round(new_width), round(new_height)),
         borderValue=background,
     )
 
@@ -173,9 +169,7 @@ def remove_watermark(
     elif algorithm == "Navier-Stokes":
         flags = cv2.INPAINT_NS
     else:
-        logging.warning(
-            f"Unsupported inpainting algorithm: {algorithm}, defaulting to Telea"
-        )
+        logging.warning(f"Unsupported inpainting algorithm: {algorithm}, defaulting to Telea")
         flags = cv2.INPAINT_TELEA
 
     # 应用Inpainting
@@ -217,9 +211,7 @@ def enhance_image(
     elif denoising_method == "Median":
         denoised = cv2.medianBlur(contrasted, denoising_kernel)
     else:
-        logging.warning(
-            f"Unsupported denoising method: {denoising_method}, skipping denoising"
-        )
+        logging.warning(f"Unsupported denoising method: {denoising_method}, skipping denoising")
         denoised = contrasted
 
     # 锐化
@@ -259,9 +251,7 @@ def convert_grayscale(
     if scale_factor != 1:
         width = int(gray_quant.shape[1] * scale_factor)
         height = int(gray_quant.shape[0] * scale_factor)
-        gray_quant = cv2.resize(
-            gray_quant, (width, height), interpolation=cv2.INTER_LINEAR
-        )
+        gray_quant = cv2.resize(gray_quant, (width, height), interpolation=cv2.INTER_LINEAR)
 
     smoothing_kernel = _odd_kernel_size(smoothing_kernel)
     if smoothing_method == "Gaussian":
@@ -269,9 +259,7 @@ def convert_grayscale(
     elif smoothing_method == "Median":
         smoothed = cv2.medianBlur(gray_quant, smoothing_kernel)
     else:
-        logging.warning(
-            f"Unsupported smoothing method: {smoothing_method}, skipping smoothing"
-        )
+        logging.warning(f"Unsupported smoothing method: {smoothing_method}, skipping smoothing")
         smoothed = gray_quant
 
     # 转换回BGR以保持一致性
@@ -311,9 +299,7 @@ def _apply_configured_processing(image: np.ndarray, config: DeskewConfig) -> np.
     return image
 
 
-def _deskew_image(
-    image: np.ndarray, background_color: tuple[int, int, int]
-) -> np.ndarray:
+def _deskew_image(image: np.ndarray, background_color: tuple[int, int, int]) -> np.ndarray:
     grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     angle = determine_skew(grayscale)
     if angle is None:
@@ -378,9 +364,7 @@ def _collect_page_images(
 
     try:
         future_to_page = {
-            executor.submit(
-                process_single_page, i, input_pdf_path, config, temp_folder
-            ): i
+            executor.submit(process_single_page, i, input_pdf_path, config, temp_folder): i
             for i in range(total_pages)
         }
 
@@ -413,14 +397,13 @@ def _collect_page_images(
     return output_images
 
 
-def _save_images_as_pdf(
-    image_paths: list[str], output_pdf_path: str | os.PathLike[str]
-) -> None:
+def _save_images_as_pdf(image_paths: list[str], output_pdf_path: str | os.PathLike[str]) -> None:
+    Image.init()
     images: list[Image.Image] = []
     try:
         for image_path in image_paths:
-            with Image.open(image_path) as image:
-                images.append(image.convert("RGB"))
+            with Image.open(image_path) as opened_image:
+                images.append(opened_image.convert("RGB"))
 
         images[0].save(
             os.fspath(output_pdf_path),
@@ -428,8 +411,8 @@ def _save_images_as_pdf(
             append_images=images[1:],
         )
     finally:
-        for image in images:
-            image.close()
+        for converted_image in images:
+            converted_image.close()
 
 
 def _cleanup_processing_files(temp_folder: str | None) -> None:
@@ -439,9 +422,7 @@ def _cleanup_processing_files(temp_folder: str | None) -> None:
         except FileNotFoundError:
             pass
         except Exception as exc:
-            logging.warning(
-                "Unable to remove temporary folder %s: %s", temp_folder, exc
-            )
+            logging.warning("Unable to remove temporary folder %s: %s", temp_folder, exc)
 
 
 def deskew_pdf(

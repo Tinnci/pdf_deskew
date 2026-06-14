@@ -12,9 +12,7 @@ __version__ = "0.1.8"
 __author__ = "driezy"
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -43,9 +41,7 @@ def main():
 
     # Enhancement group
     enhance_group = parser.add_argument_group("Image Enhancement")
-    enhance_group.add_argument(
-        "--enhance", action="store_true", help="Enable image enhancement"
-    )
+    enhance_group.add_argument("--enhance", action="store_true", help="Enable image enhancement")
     enhance_group.add_argument(
         "--contrast-level",
         type=int,
@@ -59,9 +55,7 @@ def main():
         default="Gaussian",
         help="Denoising method",
     )
-    enhance_group.add_argument(
-        "--sharpen", action="store_true", help="Enable sharpening"
-    )
+    enhance_group.add_argument("--sharpen", action="store_true", help="Enable sharpening")
 
     # Watermark group
     watermark_group = parser.add_argument_group("Watermark Removal")
@@ -77,13 +71,9 @@ def main():
 
     # Grayscale group
     grayscale_group = parser.add_argument_group("Grayscale Conversion")
-    grayscale_group.add_argument(
-        "--grayscale", action="store_true", help="Convert to grayscale"
-    )
+    grayscale_group.add_argument("--grayscale", action="store_true", help="Convert to grayscale")
 
-    parser.add_argument(
-        "-v", "--version", action="version", version=f"%(prog)s {__version__}"
-    )
+    parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {__version__}")
 
     args = parser.parse_args()
 
@@ -92,15 +82,12 @@ def main():
     if not input_path.exists():
         logger.error(f"Input file does not exist: {args.input}")
         sys.exit(1)
-    if not input_path.suffix.lower() == ".pdf":
+    if input_path.suffix.lower() != ".pdf":
         logger.error(f"Input file must be a PDF: {args.input}")
         sys.exit(1)
 
     # Determine output path
-    if args.output:
-        output_path = args.output
-    else:
-        output_path = str(input_path.parent / f"{input_path.stem}_deskewed.pdf")
+    output_path = args.output or str(input_path.parent / f"{input_path.stem}_deskewed.pdf")
 
     # Parse background color
     bg_color_map = {"white": (255, 255, 255), "black": (0, 0, 0)}
