@@ -142,6 +142,7 @@ class TestDeskewPDF(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             page_num, img_path = process_single_page(0, self.input_pdf, config, tmpdir)
             self.assertEqual(page_num, 0)
+            assert img_path is not None
             self.assertTrue(os.path.exists(img_path))
 
 

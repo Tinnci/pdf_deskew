@@ -28,8 +28,8 @@ def attach_to_console():
                 sys.stderr = open("CONOUT$", "w", encoding="utf-8", buffering=1)
                 sys.stdin = open("CONIN$", encoding="utf-8")
                 return True
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Unable to redirect console streams: %s", exc)
     return False
 
 

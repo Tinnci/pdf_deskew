@@ -465,11 +465,13 @@ class MainWindow(QMainWindow):
                 self._animations = []
             self._animations.append(anim)
 
-        try:
-            os.remove(before_path)
-            os.remove(after_path)
-        except Exception:
-            pass
+        for preview_path in [before_path, after_path]:
+            try:
+                os.remove(preview_path)
+            except FileNotFoundError:
+                continue
+            except Exception as e:
+                logger.warning("Unable to remove preview file %s: %s", preview_path, e)
 
     def update_preview_images(self):
         """根据当前缩放比例更新预览图"""
