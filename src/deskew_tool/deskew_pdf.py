@@ -6,6 +6,8 @@ import os
 import shutil
 import tempfile
 import warnings
+from collections.abc import Callable
+from dataclasses import dataclass
 
 import cv2
 import fitz  # PyMuPDF
@@ -19,6 +21,100 @@ from .config import DeskewConfig
 warnings.filterwarnings(
     "ignore", category=DeprecationWarning, message="builtin type .* has no __module__"
 )
+
+
+class ProcessingCancelledError(RuntimeError):
+    """Raised when PDF processing is cancelled by the caller."""
+
+
+ProcessingCancelled = ProcessingCancelledError
+
+
+@dataclass(frozen=True)
+class ProcessingCallbacks:
+    progress: Callable[[int], None] | None = None
+    current_page: Callable[[int], None] | None = None
+    status: Callable[[str], None] | None = None
+    is_running: Callable[[], bool] | None = None
+
+
+def _emit(callback: Callable[..., None] | None, *args: object) -> None:
+    if callback:
+        callback(*args)
+
+
+def get_pdf_page_count(
+    input_pdf_path: str | os.PathLike[str],
+    status_callback: Callable[[str], None] | None = None,
+) -> int:
+    try:
+        with fitz.open(os.fspath(input_pdf_path)) as doc:
+            return len(doc)
+    except Exception as exc:
+        message = f"无法打开 PDF 文件: {exc}"
+        logging.exception(message)
+        _emit(status_callback, message)
+        raise OSError(message) from exc
+
+
+def _pixmap_to_bgr(pix: fitz.Pixmap) -> np.ndarray:
+    image: np.ndarray = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
+        pix.height, pix.width, pix.n
+    )
+
+    if image.ndim == 2 or pix.n == 1:
+        return cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    if pix.n == 3:
+        return cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    if pix.n == 4:
+        return cv2.cvtColor(image, cv2.COLOR_RGBA2BGR)
+
+    raise ValueError(f"Unsupported pixmap channel count: {pix.n}")
+
+
+def _odd_kernel_size(value: int, default: int = 3) -> int:
+    try:
+        kernel = int(value)
+    except (TypeError, ValueError):
+        logging.warning("Invalid kernel size %r, defaulting to %s", value, default)
+        return default
+
+    if kernel < 1:
+        logging.warning("Kernel size %s is too small, defaulting to %s", value, default)
+        return default
+    if kernel % 2 == 0:
+        kernel += 1
+    return kernel
+
+
+def _quantization_step(quant_levels: int) -> int:
+    try:
+        levels = int(quant_levels)
+    except (TypeError, ValueError):
+        logging.warning("Invalid quantization level %r, defaulting to 64", quant_levels)
+        levels = 64
+
+    if levels < 2:
+        logging.warning("Quantization level %s is too low, using 2", levels)
+        levels = 2
+    elif levels > 256:
+        logging.warning("Quantization level %s is too high, using 256", levels)
+        levels = 256
+
+    return max(1, 256 // levels)
+
+
+def _positive_scale_factor(scale_factor: int) -> int:
+    try:
+        factor = int(scale_factor)
+    except (TypeError, ValueError):
+        logging.warning("Invalid scale factor %r, defaulting to 1", scale_factor)
+        return 1
+
+    if factor < 1:
+        logging.warning("Scale factor %s is too small, defaulting to 1", scale_factor)
+        return 1
+    return factor
 
 
 def rotate_image(
@@ -106,26 +202,16 @@ def enhance_image(
     :param sharpening_strength: 锐化强度，1-5
     :return: 增强后的图像
     """
-    # 对比度调整
-    if contrast_level == 1:
-        # 低对比度
-        alpha = 1.2  # 对比度控制（1.0-3.0）
-        beta = 20  # 亮度控制（0-100）
-    elif contrast_level == 2:
-        # 中等对比度
-        alpha = 1.5
-        beta = 30
-    elif contrast_level == 3:
-        # 高对比度
-        alpha = 1.8
-        beta = 40
-    else:
-        alpha = 1.5
-        beta = 30
+    contrast_settings = {
+        1: (1.2, 20),
+        2: (1.5, 30),
+        3: (1.8, 40),
+    }
+    alpha, beta = contrast_settings.get(contrast_level, contrast_settings[2])
 
     contrasted = cv2.convertScaleAbs(image, alpha=alpha, beta=beta)
 
-    # 去噪
+    denoising_kernel = _odd_kernel_size(denoising_kernel)
     if denoising_method == "Gaussian":
         denoised = cv2.GaussianBlur(contrasted, (denoising_kernel, denoising_kernel), 0)
     elif denoising_method == "Median":
@@ -163,14 +249,13 @@ def convert_grayscale(
     :param smoothing_kernel: 平滑内核大小（奇数）
     :return: 转换后的灰度图像
     """
-    # 转换为灰度图像
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # 灰度量化
-    gray_quant = np.floor_divide(gray, 256 // quant_levels) * (256 // quant_levels)
+    quant_step = _quantization_step(quant_levels)
+    gray_quant = np.floor_divide(gray, quant_step) * quant_step
     gray_quant = gray_quant.astype(np.uint8)
 
-    # 缩放
+    scale_factor = _positive_scale_factor(scale_factor)
     if scale_factor != 1:
         width = int(gray_quant.shape[1] * scale_factor)
         height = int(gray_quant.shape[0] * scale_factor)
@@ -178,7 +263,7 @@ def convert_grayscale(
             gray_quant, (width, height), interpolation=cv2.INTER_LINEAR
         )
 
-    # 平滑
+    smoothing_kernel = _odd_kernel_size(smoothing_kernel)
     if smoothing_method == "Gaussian":
         smoothed = cv2.GaussianBlur(gray_quant, (smoothing_kernel, smoothing_kernel), 0)
     elif smoothing_method == "Median":
@@ -195,182 +280,218 @@ def convert_grayscale(
     return gray_final
 
 
-def process_single_page(page_num, input_pdf_path, config, temp_folder):
+def _apply_configured_processing(
+    image: np.ndarray, config: DeskewConfig
+) -> np.ndarray:
+    if config.remove_watermark:
+        image = remove_watermark(
+            image,
+            method=config.watermark_method,
+            algorithm=config.inpainting_algorithm,
+            threshold=config.watermark_threshold,
+        )
+
+    if config.enhance_image:
+        image = enhance_image(
+            image,
+            contrast_level=config.contrast_level,
+            denoising_method=config.denoising_method,
+            denoising_kernel=config.denoising_kernel,
+            sharpening=config.sharpening,
+            sharpening_strength=config.sharpening_strength,
+        )
+
+    if config.convert_grayscale:
+        image = convert_grayscale(
+            image,
+            quant_levels=config.grayscale_quant_levels,
+            scale_factor=config.grayscale_scale_factor,
+            smoothing_method=config.grayscale_smoothing_method,
+            smoothing_kernel=config.grayscale_smoothing_kernel,
+        )
+
+    return image
+
+
+def _deskew_image(
+    image: np.ndarray, background_color: tuple[int, int, int]
+) -> np.ndarray:
+    grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    angle = determine_skew(grayscale)
+    if angle is None:
+        return image
+    return rotate_image(image, angle, background=background_color)
+
+
+def render_page_image(
+    input_pdf_path: str | os.PathLike[str], page_num: int, dpi: int
+) -> np.ndarray:
+    """Render a PDF page to a BGR image suitable for OpenCV operations."""
+    with fitz.open(os.fspath(input_pdf_path)) as doc:
+        page = doc.load_page(page_num)
+        pix = page.get_pixmap(dpi=dpi)
+        return _pixmap_to_bgr(pix)
+
+
+def process_single_page(
+    page_num: int,
+    input_pdf_path: str | os.PathLike[str],
+    config: DeskewConfig,
+    temp_folder: str | os.PathLike[str],
+) -> tuple[int, str | None]:
     """
     处理单个页面的辅助函数，供多进程调用。
     """
     try:
-        # 每个进程打开自己的 PDF 文档实例
-        doc = fitz.open(input_pdf_path)
-        page = doc.load_page(page_num)
-        pix = page.get_pixmap(dpi=config.dpi)
-        img: np.ndarray = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
-            pix.height, pix.width, pix.n
-        )
+        img = render_page_image(input_pdf_path, page_num, config.dpi)
+        img = _apply_configured_processing(img, config)
+        corrected_img = _deskew_image(img, config.background_color)
 
-        # 如果图像是灰度，则转换为 RGB
-        if img.ndim == 2:
-            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        img_path = os.path.join(os.fspath(temp_folder), f"page_{page_num}.png")
+        if not cv2.imwrite(img_path, corrected_img):
+            raise OSError(f"Unable to write temporary image: {img_path}")
 
-        # 1. 移除水印
-        if config.remove_watermark:
-            img = remove_watermark(
-                img,
-                method=config.watermark_method,
-                algorithm=config.inpainting_algorithm,
-                threshold=config.watermark_threshold,
-            )
-
-        # 2. 增强图像
-        if config.enhance_image:
-            img = enhance_image(
-                img,
-                contrast_level=config.contrast_level,
-                denoising_method=config.denoising_method,
-                denoising_kernel=config.denoising_kernel,
-                sharpening=config.sharpening,
-                sharpening_strength=config.sharpening_strength,
-            )
-
-        # 3. 转换为灰度
-        if config.convert_grayscale:
-            img = convert_grayscale(
-                img,
-                quant_levels=config.grayscale_quant_levels,
-                scale_factor=config.grayscale_scale_factor,
-                smoothing_method=config.grayscale_smoothing_method,
-                smoothing_kernel=config.grayscale_smoothing_kernel,
-            )
-
-        # 4. 校准倾斜
-        grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        angle = determine_skew(grayscale)
-
-        if angle is not None:
-            corrected_img = rotate_image(img, angle, background=config.background_color)
-        else:
-            corrected_img = img
-
-        # 保存校正后的图像到临时文件夹
-        img_path = os.path.join(temp_folder, f"page_{page_num}.png")
-        cv2.imwrite(img_path, corrected_img)
-
-        doc.close()
         return page_num, img_path
-    except Exception as e:
-        logging.error(f"Error processing page {page_num}: {e}")
+    except Exception:
+        logging.exception("Error processing page %s", page_num)
         return page_num, None
 
 
+def _update_page_progress(
+    callbacks: ProcessingCallbacks, completed_count: int, total_pages: int
+) -> None:
+    _emit(callbacks.progress, int((completed_count / total_pages) * 100))
+    _emit(callbacks.current_page, completed_count)
+    _emit(callbacks.status, f"Processed page {completed_count}/{total_pages}")
+
+
+def _collect_page_images(
+    input_pdf_path: str | os.PathLike[str],
+    config: DeskewConfig,
+    temp_folder: str,
+    total_pages: int,
+    callbacks: ProcessingCallbacks,
+) -> list[str]:
+    results: list[str | None] = [None] * total_pages
+    completed_count = 0
+    max_workers = min(os.cpu_count() or 4, total_pages)
+    executor = concurrent.futures.ProcessPoolExecutor(max_workers=max_workers)
+    cancelled = False
+
+    try:
+        future_to_page = {
+            executor.submit(
+                process_single_page, i, input_pdf_path, config, temp_folder
+            ): i
+            for i in range(total_pages)
+        }
+
+        for future in concurrent.futures.as_completed(future_to_page):
+            if callbacks.is_running and not callbacks.is_running():
+                cancelled = True
+                executor.shutdown(wait=True, cancel_futures=True)
+                _emit(callbacks.status, "Processing cancelled.")
+                logging.info("Processing cancelled by user.")
+                raise ProcessingCancelledError("Processing cancelled.")
+
+            try:
+                page_num, img_path = future.result()
+            except Exception:
+                logging.exception("Page processing generated an exception")
+            else:
+                if img_path:
+                    results[page_num] = img_path
+
+            completed_count += 1
+            _update_page_progress(callbacks, completed_count, total_pages)
+
+    finally:
+        if not cancelled:
+            executor.shutdown()
+
+    output_images = [path for path in results if path is not None]
+    if not output_images:
+        raise RuntimeError("No pages were successfully processed.")
+    return output_images
+
+
+def _save_images_as_pdf(
+    image_paths: list[str], output_pdf_path: str | os.PathLike[str]
+) -> None:
+    images: list[Image.Image] = []
+    try:
+        for image_path in image_paths:
+            with Image.open(image_path) as image:
+                images.append(image.convert("RGB"))
+
+        images[0].save(
+            os.fspath(output_pdf_path),
+            save_all=True,
+            append_images=images[1:],
+        )
+    finally:
+        for image in images:
+            image.close()
+
+
+def _cleanup_processing_files(temp_folder: str | None) -> None:
+    if temp_folder:
+        try:
+            shutil.rmtree(temp_folder)
+        except FileNotFoundError:
+            pass
+        except Exception as exc:
+            logging.warning(
+                "Unable to remove temporary folder %s: %s", temp_folder, exc
+            )
+
+
 def deskew_pdf(
-    input_pdf_path,
-    output_pdf_path,
+    input_pdf_path: str | os.PathLike[str],
+    output_pdf_path: str | os.PathLike[str],
     config: DeskewConfig | None = None,
-    progress_callback=None,
-    current_page_callback=None,
-    status_callback=None,
-    is_running_callback=None,
-):
+    progress_callback: Callable[[int], None] | None = None,
+    current_page_callback: Callable[[int], None] | None = None,
+    status_callback: Callable[[str], None] | None = None,
+    is_running_callback: Callable[[], bool] | None = None,
+) -> None:
     """
     校正 PDF 文件中的图像倾斜，并根据用户选择应用图像处理功能。
     """
-    if not config:
-        config = DeskewConfig()
+    config = config or DeskewConfig()
+    callbacks = ProcessingCallbacks(
+        progress=progress_callback,
+        current_page=current_page_callback,
+        status=status_callback,
+        is_running=is_running_callback,
+    )
 
-    # 打开 PDF 文件，添加错误处理
-    try:
-        pdf_document = fitz.open(input_pdf_path)
-    except Exception as e:
-        logging.error(f"无法打开 PDF 文件: {e}")
-        if status_callback:
-            status_callback(f"无法打开 PDF 文件: {e}")
-        raise OSError(f"无法打开 PDF 文件: {e}") from e
-
-    temp_folder = tempfile.mkdtemp(prefix="pdf_deskew_")
+    temp_folder: str | None = None
     output_images: list[str] = []
 
     try:
-        total_pages = len(pdf_document)
-        pdf_document.close()  # 关闭主进程中的文档，让子进程自己打开
+        total_pages = get_pdf_page_count(input_pdf_path, status_callback)
+        if total_pages <= 0:
+            raise RuntimeError("Input PDF contains no pages.")
 
-        results = [None] * total_pages
-        completed_count = 0
+        temp_folder = tempfile.mkdtemp(prefix="pdf_deskew_")
+        output_images = _collect_page_images(
+            input_pdf_path, config, temp_folder, total_pages, callbacks
+        )
 
-        # 使用多进程并行处理页面
-        max_workers = min(os.cpu_count() or 4, total_pages)
-        with concurrent.futures.ProcessPoolExecutor(
-            max_workers=max_workers
-        ) as executor:
-            future_to_page = {
-                executor.submit(
-                    process_single_page, i, input_pdf_path, config, temp_folder
-                ): i
-                for i in range(total_pages)
-            }
+        _emit(status_callback, "Generating output PDF...")
+        _save_images_as_pdf(output_images, output_pdf_path)
+        _emit(status_callback, "Processing completed successfully.")
+        logging.info("Processing completed successfully for %s", output_pdf_path)
 
-            for future in concurrent.futures.as_completed(future_to_page):
-                # 检查是否需要取消处理
-                if is_running_callback and not is_running_callback():
-                    executor.shutdown(wait=False, cancel_futures=True)
-                    if status_callback:
-                        status_callback("Processing cancelled.")
-                    logging.info("Processing cancelled by user.")
-                    return
-
-                try:
-                    page_num, img_path = future.result()
-                    if img_path:
-                        results[page_num] = img_path
-
-                    completed_count += 1
-
-                    # 更新进度和状态
-                    if progress_callback:
-                        progress_callback(int((completed_count / total_pages) * 100))
-                    if current_page_callback:
-                        current_page_callback(completed_count)
-                    if status_callback:
-                        status_callback(
-                            f"Processed page {completed_count}/{total_pages}"
-                        )
-
-                except Exception as e:
-                    logging.error(f"Page processing generated an exception: {e}")
-
-        # 过滤掉处理失败的页面（如果有）
-        output_images = [r for r in results if r is not None]  # type: ignore
-
-        if not output_images:
-            raise RuntimeError("No pages were successfully processed.")
-
-        if status_callback:
-            status_callback("Generating output PDF...")
-
-        # 使用 PIL 将所有校正后的图像重新保存为 PDF
-        image_list = [Image.open(img_path).convert("RGB") for img_path in output_images]
-        if image_list:
-            image_list[0].save(
-                output_pdf_path, save_all=True, append_images=image_list[1:]
-            )
-
-        if status_callback:
-            status_callback("Processing completed successfully.")
-        logging.info(f"Processing completed successfully for {output_pdf_path}")
-
-    except Exception as e:
-        logging.error(f"Error during deskewing PDF: {e}")
-        if status_callback:
-            status_callback(f"Error during processing: {e}")
-        raise e
+    except ProcessingCancelledError:
+        raise
+    except OSError:
+        raise
+    except Exception as exc:
+        logging.exception("Error during deskewing PDF")
+        _emit(status_callback, f"Error during processing: {exc}")
+        raise
 
     finally:
-        # 清理临时文件夹
-        for img_path in output_images:
-            try:
-                os.remove(img_path)
-            except Exception as e:
-                logging.warning(f"Unable to remove temporary image {img_path}: {e}")
-        try:
-            shutil.rmtree(temp_folder)
-        except Exception as e:
-            logging.warning(f"Unable to remove temporary folder {temp_folder}: {e}")
+        _cleanup_processing_files(temp_folder)

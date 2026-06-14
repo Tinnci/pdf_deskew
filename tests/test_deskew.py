@@ -6,7 +6,11 @@ import unittest
 import fitz
 
 from deskew_tool.config import DeskewConfig
-from deskew_tool.deskew_pdf import deskew_pdf
+from deskew_tool.deskew_pdf import (
+    ProcessingCancelledError,
+    deskew_pdf,
+    get_pdf_page_count,
+)
 
 
 class TestDeskewPDF(unittest.TestCase):
@@ -44,6 +48,17 @@ class TestDeskewPDF(unittest.TestCase):
 
         with self.assertRaises(OSError):
             deskew_pdf(input_pdf, output_pdf)
+
+    def test_deskew_pdf_cancelled(self):
+        config = DeskewConfig(dpi=72)
+
+        with self.assertRaises(ProcessingCancelledError):
+            deskew_pdf(
+                self.input_pdf,
+                self.output_pdf,
+                config=config,
+                is_running_callback=lambda: False,
+            )
 
     def test_rotate_image(self):
         import numpy as np
@@ -88,6 +103,9 @@ class TestDeskewPDF(unittest.TestCase):
         result_none = enhance_image(img, denoising_method="None")
         self.assertEqual(result_none.shape, img.shape)
 
+        result_even_kernel = enhance_image(img, denoising_kernel=2)
+        self.assertEqual(result_even_kernel.shape, img.shape)
+
     def test_convert_grayscale(self):
         import numpy as np
 
@@ -102,6 +120,17 @@ class TestDeskewPDF(unittest.TestCase):
 
         result_none = convert_grayscale(img, smoothing_method="None")
         self.assertEqual(result_none.shape, img.shape)
+
+        result_clamped = convert_grayscale(
+            img,
+            quant_levels=999,
+            scale_factor=0,
+            smoothing_kernel=2,
+        )
+        self.assertEqual(result_clamped.shape, img.shape)
+
+    def test_get_pdf_page_count(self):
+        self.assertEqual(get_pdf_page_count(self.input_pdf), 1)
 
     def test_process_single_page(self):
         import tempfile

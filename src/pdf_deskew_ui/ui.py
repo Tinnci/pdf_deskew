@@ -6,8 +6,6 @@ from pathlib import Path
 from typing import cast
 
 import cv2
-import fitz
-import numpy as np
 from PyQt6 import QtCore
 from PyQt6.QtCore import QEasingCurve, QPropertyAnimation, Qt
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPixmap, QWheelEvent
@@ -31,7 +29,11 @@ from PyQt6.QtWidgets import (
 from qt_material import apply_stylesheet
 
 from deskew_tool.config import Language
-from deskew_tool.deskew_pdf import process_single_page
+from deskew_tool.deskew_pdf import (
+    get_pdf_page_count,
+    process_single_page,
+    render_page_image,
+)
 from pdf_deskew_ui.styles import StyleManager
 from pdf_deskew_ui.widgets import ConfigWidget, FileSelectionWidget, StatusWidget
 from pdf_deskew_ui.worker import WorkerThread
@@ -328,26 +330,18 @@ class MainWindow(QMainWindow):
         QApplication.processEvents()
 
         try:
-            temp_dir = tempfile.mkdtemp(prefix="pdf_preview_")
+            with tempfile.TemporaryDirectory(prefix="pdf_preview_") as temp_dir:
+                before_path = os.path.join(temp_dir, "before.png")
+                img_before = render_page_image(input_pdf, page_num, config.dpi)
+                if not cv2.imwrite(before_path, img_before):
+                    raise OSError(f"Unable to write preview image: {before_path}")
 
-            # 获取处理前的图像
-            doc = fitz.open(input_pdf)
-            page = doc.load_page(page_num)
-            pix = page.get_pixmap(dpi=config.dpi)
-            img_before: np.ndarray = np.frombuffer(pix.samples, dtype=np.uint8).reshape(
-                pix.height, pix.width, pix.n
-            )
-            if img_before.ndim == 2:
-                img_before = cv2.cvtColor(img_before, cv2.COLOR_GRAY2BGR)
+                _, after_path = process_single_page(
+                    page_num, input_pdf, config, temp_dir
+                )
+                if not after_path:
+                    raise RuntimeError("Failed to process preview page.")
 
-            before_path = os.path.join(temp_dir, "before.png")
-            cv2.imwrite(before_path, img_before)
-            doc.close()
-
-            # 获取处理后的图像
-            _, after_path = process_single_page(page_num, input_pdf, config, temp_dir)
-
-            if after_path:
                 self.display_before_after(before_path, after_path)
 
         except Exception as e:
@@ -382,9 +376,7 @@ class MainWindow(QMainWindow):
 
     def update_page_count(self, file_path):
         try:
-            doc = fitz.open(file_path)
-            self.preview_page_spin.setMaximum(len(doc))
-            doc.close()
+            self.preview_page_spin.setMaximum(max(get_pdf_page_count(file_path), 1))
         except Exception as e:
             logging.error(f"Failed to get page count: {e}")
 
