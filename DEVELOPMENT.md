@@ -1,89 +1,99 @@
 # Development Guide
 
-This document provides instructions for setting up the development environment and contributing to the PDF Deskew Tool.
+This guide is for contributors who build, test, or release PDF Deskew Tool. User-facing installation and usage examples live in [README.md](README.md).
 
 ## Prerequisites
 
-- [uv](https://docs.astral.sh/uv/) (Recommended)
 - Python 3.12 or higher
-- System dependencies (for OpenCV and Qt):
-  - **Ubuntu/Debian**: `sudo apt-get install libgl1 libglib2.0-0`
-  - **Windows/macOS**: Usually handled by the installers.
+- [uv](https://docs.astral.sh/uv/) for dependency and environment management
+- Platform packages needed by OpenCV and Qt:
+  - Ubuntu/Debian: `sudo apt-get install libgl1 libglib2.0-0`
+  - Windows/macOS: usually handled by the Python wheels and installers
 
-## Setup Development Environment
-
-We use `uv` for dependency management. To set up the project:
+## Setup
 
 ```bash
-# Clone the repository
 git clone https://github.com/Tinnci/pdf_deskew.git
 cd pdf_deskew
-
-# Create virtual environment and install dependencies
-uv sync --all-extras --dev
+uv sync --dev
 ```
 
-## Running the Application
+Use `--frozen` when you need to verify the lockfile exactly:
 
-### GUI Mode
+```bash
+uv run --frozen pytest
+```
+
+## Run Locally
+
+GUI:
+
 ```bash
 uv run pdf-deskew
 ```
 
-### CLI Mode
+CLI:
+
 ```bash
 uv run pdf-deskew-cli --help
+uv run pdf-deskew-cli input.pdf -o output.pdf
 ```
 
-## Code Quality
+## Quality Checks
 
-We use `ruff` for linting and formatting, and `mypy` for type checking.
+Run these before opening a pull request or pushing release changes:
 
 ```bash
-# Run linting
 uv run ruff check .
-
-# Run formatting check
 uv run ruff format --check .
-
-# Run type checking
 uv run mypy src
-```
-
-## Testing
-
-We use `pytest` for testing.
-
-```bash
 uv run pytest
 ```
 
-## CI/CD and Publishing
+Focused test runs are useful while iterating:
 
-### GitHub Actions
-- **CI**: Triggered on every push and pull request to `main`. Runs linting, type checking, and tests.
-- **Release**: Triggered when a new tag starting with `v*` is pushed. Builds the package and publishes it to PyPI.
+```bash
+uv run pytest tests/test_deskew.py -q
+uv run pytest tests/test_ui.py -q
+```
 
-### Trusted Publishing
-This project uses [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/). No API tokens are stored in GitHub Secrets. The `release.yml` workflow uses OIDC to authenticate with PyPI.
+## Project Layout
 
-To configure a new publisher:
-1. Go to your project on PyPI.
-2. Navigate to **Settings** > **Publishing**.
-3. Add a new GitHub publisher with:
-   - Owner: `Tinnci`
-   - Repository: `pdf_deskew`
-   - Workflow: `release.yml`
+- `src/deskew_tool/config.py`: shared configuration dataclass and language enum
+- `src/deskew_tool/deskew_pdf.py`: core PDF rendering, image processing, deskewing, progress, cancellation, and PDF output
+- `src/deskew_tool/__init__.py`: CLI entry point and package version
+- `src/pdf_deskew_ui/`: PyQt6 GUI, widgets, styles, and worker thread
+- `tests/`: unit and UI smoke tests
+
+Keep core processing reusable from both the CLI and GUI. UI code should call shared helpers instead of duplicating PDF rendering or image conversion logic.
+
+## Documentation Maintenance
+
+- Keep `README.md` focused on users: what the tool does, install commands, basic GUI and CLI usage, support, and license.
+- Keep this file focused on contributors: setup, local runs, checks, release flow, and architecture notes.
+- When CLI flags, entry points, supported Python versions, or release workflows change, update both docs only where the information is relevant.
+- Avoid claiming features that are not implemented. For example, the tool processes pages in parallel within one PDF; it does not currently accept multiple PDF inputs in one CLI command.
+
+## CI and Release
+
+GitHub Actions runs on pushes and pull requests to `main`:
+
+- `ruff check .`
+- `ruff format --check .`
+- `mypy src`
+- `pytest` with coverage
+
+Release publishing is handled by `.github/workflows/release.yml` when a tag matching `v*` is pushed. The workflow uses PyPI Trusted Publishing through OIDC, so no PyPI API token should be stored in GitHub Secrets.
 
 ## Versioning
 
-We use dynamic versioning. The version is defined in `src/deskew_tool/__init__.py`.
+The package version is defined in `src/deskew_tool/__init__.py`.
 
-To release a new version:
-1. Update `__version__` in `src/deskew_tool/__init__.py`.
-2. Commit the change.
-3. Create and push a tag:
-   ```bash
-   git tag v0.1.x
-   git push origin main --tags
-   ```
+To release:
+
+```bash
+# 1. Update __version__ in src/deskew_tool/__init__.py
+# 2. Commit the version change
+git tag v0.1.x
+git push origin main --tags
+```

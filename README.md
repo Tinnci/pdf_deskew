@@ -2,158 +2,78 @@
 
 [![PyPI version](https://badge.fury.io/py/pdf-deskew.svg)](https://badge.fury.io/py/pdf-deskew)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/tinnci/pdf_deskew/actions/workflows/ci.yml/badge.svg)](https://github.com/tinnci/pdf_deskew/actions/workflows/ci.yml)
+[![CI](https://github.com/Tinnci/pdf_deskew/actions/workflows/ci.yml/badge.svg)](https://github.com/Tinnci/pdf_deskew/actions/workflows/ci.yml)
 
-[English](#english) | [简体中文](#简体中文)
+PDF Deskew Tool is a desktop and command-line utility for correcting skewed scanned PDF pages. It renders pages with PyMuPDF, detects skew with OpenCV and `deskew`, then writes a corrected PDF with optional cleanup steps.
 
----
+PDF Deskew Tool 是一个用于扫描 PDF 页面纠偏的桌面和命令行工具。它使用 PyMuPDF 渲染页面，通过 OpenCV 和 `deskew` 检测倾斜角度，并可在输出前执行可选的图像清理。
 
-<a name="english"></a>
+## Features / 功能
 
-## English
+- Automatic page deskewing / 自动页面纠偏
+- Parallel page processing for a single PDF / 单个 PDF 内的页面并行处理
+- Optional watermark removal with inpainting / 可选的水印修复去除
+- Optional contrast, denoising, sharpening, and grayscale conversion / 可选的对比度、降噪、锐化和灰度转换
+- PyQt6 GUI with drag and drop, before/after preview, progress, cancel, themes, and Chinese/English UI / PyQt6 图形界面，支持拖放、前后预览、进度、取消、主题和中英文切换
+- CLI entry point for automation / 面向自动化流程的命令行入口
 
-### Overview
+## Requirements / 环境要求
 
-**PDF Deskew Tool** is a powerful GUI and CLI application designed to automatically detect and correct skewed pages in scanned PDF documents. By leveraging PyMuPDF and OpenCV, it provides high-quality image processing to ensure your documents are perfectly aligned and highly readable.
+- Python 3.12 or higher
+- Windows, macOS, or Linux
+- Runtime dependencies are installed by the package: PyQt6, PyMuPDF, OpenCV, Pillow, NumPy, `deskew`, `qt-material`, and `tqdm`
 
-### Key Features
+## Installation / 安装
 
-- **Smart Deskewing**: Automatically detects and corrects rotation angles.
-- **Batch Processing**: Handle multiple PDF files simultaneously.
-- **Image Enhancement**:
-  - **Watermark Removal**: Advanced inpainting to clean up documents.
-  - **Quality Boost**: Contrast enhancement, denoising, and sharpening.
-  - **Grayscale Conversion**: Reduce file size and improve clarity.
-- **User Friendly**:
-  - **Modern GUI**: Built with PyQt6 and Material Design themes.
-  - **Drag & Drop**: Easy file selection.
-  - **Bilingual**: Full support for English and Chinese.
-- **Flexible CLI**: Robust command-line interface for automation and power users.
-
-### Development
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) for instructions on setting up the development environment and contributing.
-
-### Installation
-
-#### Recommended: Using [uv](https://docs.astral.sh/uv/)
+Using `uv`:
 
 ```bash
 uv tool install pdf-deskew
 ```
 
-#### Using pip
+Using `pip`:
 
 ```bash
 pip install pdf-deskew
 ```
 
-### Usage
+## Usage / 使用
 
-#### GUI Application
-Simply run the command to open the interface:
+Start the GUI / 启动图形界面:
+
 ```bash
 pdf-deskew
 ```
 
-#### Command Line Interface (CLI)
+Run the CLI / 使用命令行:
+
 ```bash
-# Basic usage (output saved as input_deskewed.pdf)
+# Output defaults to input_deskewed.pdf
 pdf-deskew-cli input.pdf
 
-# Custom output and DPI
+# Custom output path and render DPI
 pdf-deskew-cli input.pdf -o output.pdf -d 600
 
-# Enable all enhancements
-pdf-deskew-cli input.pdf --enhance --remove-watermark
+# Enable cleanup options
+pdf-deskew-cli input.pdf --enhance --remove-watermark --grayscale --sharpen
+
+# Show all CLI options
+pdf-deskew-cli --help
 ```
-
----
-
-<a name="简体中文"></a>
-
-## 简体中文
-
-### 概述
-
-**PDF 倾斜校正工具 (PDF Deskew Tool)** 是一款功能强大的图形界面 (GUI) 和命令行 (CLI) 应用程序，专门用于自动检测并纠正扫描 PDF 文档中的页面倾斜。通过结合 PyMuPDF 和 OpenCV 的强大功能，它能提供高质量的图像处理，确保您的文档排列整齐、清晰易读。
-
-### 核心功能
-
-- **智能纠偏**：自动检测并修正页面旋转角度。
-- **批量处理**：支持同时处理多个 PDF 文件，提高效率。
-- **图像增强**：
-  - **去除水印**：使用先进的修复算法清理文档背景。
-  - **画质提升**：对比度增强、降噪及锐化处理。
-  - **灰度转换**：减小文件体积并提升文字清晰度。
-- **用户友好**：
-  - **现代界面**：基于 PyQt6 和 Material Design 主题构建。
-  - **拖放支持**：支持直接拖入文件进行处理。
-  - **双语支持**：完整的中英文界面切换。
-- **灵活的命令行**：为高级用户和自动化脚本提供强大的 CLI 支持。
-
-### 开发指南
-
-请参阅 [DEVELOPMENT.md](DEVELOPMENT.md) 了解如何搭建开发环境及参与贡献。
-
-### 安装方法
-
-#### 推荐方式：使用 [uv](https://docs.astral.sh/uv/)
-
-```bash
-uv tool install pdf-deskew
-```
-
-#### 使用 pip
-
-```bash
-pip install pdf-deskew
-```
-
-### 使用说明
-
-#### 图形界面 (GUI)
-直接运行以下命令启动程序：
-```bash
-pdf-deskew
-```
-
-#### 命令行界面 (CLI)
-```bash
-# 基本用法（输出默认为 input_deskewed.pdf）
-pdf-deskew-cli input.pdf
-
-# 指定输出路径和 DPI
-pdf-deskew-cli input.pdf -o output.pdf -d 600
-
-# 开启所有增强功能
-pdf-deskew-cli input.pdf --enhance --remove-watermark
-```
-
----
-
-## System Requirements / 系统要求
-
-- **OS**: Windows, macOS, or Linux
-- **Python**: 3.12 or higher
-- **Dependencies**: PyQt6, PyMuPDF, OpenCV, Pillow, numpy, deskew, qt-material, tqdm
 
 ## Development / 开发
 
-```bash
-git clone https://github.com/tinnci/pdf_deskew.git
-cd pdf_deskew
-uv venv
-# Windows: .venv\Scripts\activate | Linux/macOS: source .venv/bin/activate
-uv pip install -e .
-pytest
-```
+Development setup, quality checks, release notes, and contribution guidance are maintained in [DEVELOPMENT.md](DEVELOPMENT.md).
 
-## License / 许可证
-
-This project is licensed under the **MIT License**.
+开发环境、质量检查、发布说明和贡献流程请见 [DEVELOPMENT.md](DEVELOPMENT.md)。
 
 ## Support / 支持
 
-- **Issues**: [GitHub Issues](https://github.com/tinnci/pdf_deskew/issues)
-- **Email**: luoyido@outlook.com
+- Issues: [GitHub Issues](https://github.com/Tinnci/pdf_deskew/issues)
+- Email: luoyido@outlook.com
+
+## License / 许可证
+
+This project is licensed under the [MIT License](LICENSE).
+
+本项目使用 [MIT License](LICENSE)。
