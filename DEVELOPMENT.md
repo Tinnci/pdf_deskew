@@ -132,6 +132,22 @@ The repository uses two different security checks:
 - Do not allowlist the whole user profile or the whole repository.
 - Re-check package integrity before treating an alert as a false positive. Compare installed files with PyPI metadata or reinstall into a clean environment.
 
+## Dependency Maintenance
+
+Python dependencies are resolved with `uv` and committed through `uv.lock`. To refresh every locked dependency manually:
+
+```bash
+uv lock --upgrade
+uv sync --all-extras --dev --frozen
+```
+
+Dependabot is configured in `.github/dependabot.yml` for:
+
+- `uv` updates in the repository root, covering `pyproject.toml` and `uv.lock`.
+- `github-actions` updates for workflow action versions.
+
+Keep dependency PRs small enough to review. Runtime dependencies and development tools are grouped separately so CI failures can be traced to the right class of change.
+
 ## Project Layout
 
 - `src/deskew_tool/config.py`: shared configuration dataclass and language enum
