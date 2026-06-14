@@ -280,9 +280,7 @@ def convert_grayscale(
     return gray_final
 
 
-def _apply_configured_processing(
-    image: np.ndarray, config: DeskewConfig
-) -> np.ndarray:
+def _apply_configured_processing(image: np.ndarray, config: DeskewConfig) -> np.ndarray:
     if config.remove_watermark:
         image = remove_watermark(
             image,
