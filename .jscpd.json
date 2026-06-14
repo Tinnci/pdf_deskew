@@ -1,0 +1,13 @@
+{
+  "threshold": 5,
+  "minLines": 8,
+  "minTokens": 80,
+  "reporters": ["console"],
+  "ignore": [
+    "**/.venv/**",
+    "**/.git/**",
+    "**/__pycache__/**",
+    "uv.lock",
+    "coverage.xml"
+  ]
+}
