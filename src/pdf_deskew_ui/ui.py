@@ -38,6 +38,8 @@ from pdf_deskew_ui.styles import StyleManager
 from pdf_deskew_ui.widgets import ConfigWidget, FileSelectionWidget, StatusWidget
 from pdf_deskew_ui.worker import WorkerThread
 
+logger = logging.getLogger(__name__)
+
 # Use getattr to avoid Mypy errors with PyQt6.QtCore.pyqtProperty
 pyqtProperty = getattr(QtCore, "pyqtProperty")  # noqa: B009, N816
 
@@ -64,7 +66,7 @@ class MainWindow(QMainWindow):
                     return cast(dict[str, dict[str, str]], data)
                 return {}
         except Exception as e:
-            logging.error(f"Failed to load translations: {e}")
+            logger.exception("Failed to load translations: %s", e)
             return {
                 "en_US": {"window_title": "PDF Deskew Tool"},
                 "zh_CN": {"window_title": "PDF 校准工具"},
@@ -343,7 +345,7 @@ class MainWindow(QMainWindow):
                 self.display_before_after(before_path, after_path)
 
         except Exception as e:
-            logging.error(f"Preview failed: {e}")
+            logger.exception("Preview failed: %s", e)
             QMessageBox.warning(self, "Preview Error", f"Failed to preview page: {e}")
         finally:
             self.preview_button.setEnabled(True)
@@ -368,7 +370,7 @@ class MainWindow(QMainWindow):
         try:
             self.preview_page_spin.setMaximum(max(get_pdf_page_count(file_path), 1))
         except Exception as e:
-            logging.error(f"Failed to get page count: {e}")
+            logger.exception("Failed to get page count: %s", e)
 
     def browse_output(self):
         """浏览选择输出PDF文件"""

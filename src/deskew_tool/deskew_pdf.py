@@ -22,6 +22,8 @@ warnings.filterwarnings(
     "ignore", category=DeprecationWarning, message="builtin type .* has no __module__"
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ProcessingCancelledError(RuntimeError):
     """Raised when PDF processing is cancelled by the caller."""
@@ -52,7 +54,7 @@ def get_pdf_page_count(
             return len(doc)
     except Exception as exc:
         message = f"无法打开 PDF 文件: {exc}"
-        logging.exception(message)
+        logger.exception(message)
         _emit(status_callback, message)
         raise OSError(message) from exc
 
@@ -76,11 +78,11 @@ def _odd_kernel_size(value: int, default: int = 3) -> int:
     try:
         kernel = int(value)
     except (TypeError, ValueError):
-        logging.warning("Invalid kernel size %r, defaulting to %s", value, default)
+        logger.warning("Invalid kernel size %r, defaulting to %s", value, default)
         return default
 
     if kernel < 1:
-        logging.warning("Kernel size %s is too small, defaulting to %s", value, default)
+        logger.warning("Kernel size %s is too small, defaulting to %s", value, default)
         return default
     if kernel % 2 == 0:
         kernel += 1
@@ -91,14 +93,14 @@ def _quantization_step(quant_levels: int) -> int:
     try:
         levels = int(quant_levels)
     except (TypeError, ValueError):
-        logging.warning("Invalid quantization level %r, defaulting to 64", quant_levels)
+        logger.warning("Invalid quantization level %r, defaulting to 64", quant_levels)
         levels = 64
 
     if levels < 2:
-        logging.warning("Quantization level %s is too low, using 2", levels)
+        logger.warning("Quantization level %s is too low, using 2", levels)
         levels = 2
     elif levels > 256:
-        logging.warning("Quantization level %s is too high, using 256", levels)
+        logger.warning("Quantization level %s is too high, using 256", levels)
         levels = 256
 
     return max(1, 256 // levels)
@@ -108,11 +110,11 @@ def _positive_scale_factor(scale_factor: int) -> int:
     try:
         factor = int(scale_factor)
     except (TypeError, ValueError):
-        logging.warning("Invalid scale factor %r, defaulting to 1", scale_factor)
+        logger.warning("Invalid scale factor %r, defaulting to 1", scale_factor)
         return 1
 
     if factor < 1:
-        logging.warning("Scale factor %s is too small, defaulting to 1", scale_factor)
+        logger.warning("Scale factor %s is too small, defaulting to 1", scale_factor)
         return 1
     return factor
 
@@ -156,7 +158,7 @@ def remove_watermark(
     :return: 移除水印后的图像
     """
     if method != "Inpainting":
-        logging.warning(f"Unsupported watermark removal method: {method}")
+        logger.warning("Unsupported watermark removal method: %s", method)
         return image
 
     # 生成水印掩码
@@ -169,13 +171,11 @@ def remove_watermark(
     elif algorithm == "Navier-Stokes":
         flags = cv2.INPAINT_NS
     else:
-        logging.warning(f"Unsupported inpainting algorithm: {algorithm}, defaulting to Telea")
+        logger.warning("Unsupported inpainting algorithm: %s, defaulting to Telea", algorithm)
         flags = cv2.INPAINT_TELEA
 
     # 应用Inpainting
-    inpainted = cv2.inpaint(image, mask, 3, flags)
-
-    return inpainted
+    return cv2.inpaint(image, mask, 3, flags)
 
 
 def enhance_image(
@@ -211,7 +211,7 @@ def enhance_image(
     elif denoising_method == "Median":
         denoised = cv2.medianBlur(contrasted, denoising_kernel)
     else:
-        logging.warning(f"Unsupported denoising method: {denoising_method}, skipping denoising")
+        logger.warning("Unsupported denoising method: %s, skipping denoising", denoising_method)
         denoised = contrasted
 
     # 锐化
@@ -259,13 +259,11 @@ def convert_grayscale(
     elif smoothing_method == "Median":
         smoothed = cv2.medianBlur(gray_quant, smoothing_kernel)
     else:
-        logging.warning(f"Unsupported smoothing method: {smoothing_method}, skipping smoothing")
+        logger.warning("Unsupported smoothing method: %s, skipping smoothing", smoothing_method)
         smoothed = gray_quant
 
     # 转换回BGR以保持一致性
-    gray_final = cv2.cvtColor(smoothed, cv2.COLOR_GRAY2BGR)
-
-    return gray_final
+    return cv2.cvtColor(smoothed, cv2.COLOR_GRAY2BGR)
 
 
 def _apply_configured_processing(image: np.ndarray, config: DeskewConfig) -> np.ndarray:
@@ -337,7 +335,7 @@ def process_single_page(
 
         return page_num, img_path
     except Exception:
-        logging.exception("Error processing page %s", page_num)
+        logger.exception("Error processing page %s", page_num)
         return page_num, None
 
 
@@ -373,13 +371,13 @@ def _collect_page_images(
                 cancelled = True
                 executor.shutdown(wait=True, cancel_futures=True)
                 _emit(callbacks.status, "Processing cancelled.")
-                logging.info("Processing cancelled by user.")
+                logger.info("Processing cancelled by user.")
                 raise ProcessingCancelledError("Processing cancelled.")
 
             try:
                 page_num, img_path = future.result()
             except Exception:
-                logging.exception("Page processing generated an exception")
+                logger.exception("Page processing generated an exception")
             else:
                 if img_path:
                     results[page_num] = img_path
@@ -422,7 +420,7 @@ def _cleanup_processing_files(temp_folder: str | None) -> None:
         except FileNotFoundError:
             pass
         except Exception as exc:
-            logging.warning("Unable to remove temporary folder %s: %s", temp_folder, exc)
+            logger.warning("Unable to remove temporary folder %s: %s", temp_folder, exc)
 
 
 def deskew_pdf(
@@ -461,14 +459,14 @@ def deskew_pdf(
         _emit(status_callback, "Generating output PDF...")
         _save_images_as_pdf(output_images, output_pdf_path)
         _emit(status_callback, "Processing completed successfully.")
-        logging.info("Processing completed successfully for %s", output_pdf_path)
+        logger.info("Processing completed successfully for %s", output_pdf_path)
 
     except ProcessingCancelledError:
         raise
     except OSError:
         raise
     except Exception as exc:
-        logging.exception("Error during deskewing PDF")
+        logger.exception("Error during deskewing PDF")
         _emit(status_callback, f"Error during processing: {exc}")
         raise
 

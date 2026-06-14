@@ -9,6 +9,8 @@ from qt_material import apply_stylesheet
 from . import __version__
 from .ui import MainWindow
 
+logger = logging.getLogger(__name__)
+
 
 def attach_to_console():
     """在 Windows 上尝试附加到父进程的控制台，以便输出信息"""
@@ -49,7 +51,7 @@ def main():
         format="%(asctime)s - %(levelname)s - %(message)s",
         level=logging.INFO,
     )
-    logging.info(f"Application started (v{__version__})")
+    logger.info("Application started (v%s)", __version__)
 
     app = QApplication(sys.argv)
     apply_stylesheet(app, theme="dark_teal.xml")  # 可选的主题样式

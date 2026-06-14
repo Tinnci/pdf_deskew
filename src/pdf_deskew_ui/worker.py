@@ -15,6 +15,8 @@ from deskew_tool.deskew_pdf import (
     render_page_image,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def _new_temp_png(prefix: str) -> str:
     fd, path = tempfile.mkstemp(prefix=prefix, suffix=".png")
@@ -50,7 +52,7 @@ class WorkerThread(QThread):
         preview_emitted = False
 
         try:
-            logging.info(f"Processing started for {self.input_pdf}")
+            logger.info("Processing started for %s", self.input_pdf)
             self.status.emit("Opening input PDF file...")
             total_pages = get_pdf_page_count(self.input_pdf)
             self.total_pages.emit(total_pages)
@@ -77,15 +79,15 @@ class WorkerThread(QThread):
             _save_page_preview(self.output_pdf, 0, self.config.dpi, temp_after)
             self.status.emit("Saving 'After' image...")
 
-            logging.info(f"Processing completed successfully for {self.output_pdf}")
+            logger.info("Processing completed successfully for %s", self.output_pdf)
             preview_emitted = True
             self.before_after.emit(temp_before, temp_after)  # 发送信号
             self.finished.emit(self.output_pdf)
         except ProcessingCancelledError:
-            logging.info("Processing cancelled for %s", self.input_pdf)
+            logger.info("Processing cancelled for %s", self.input_pdf)
             self.status.emit("Processing cancelled.")
         except Exception as e:
-            logging.error(f"Processing error: {e}")
+            logger.exception("Processing error: %s", e)
             self.error.emit(str(e))
         finally:
             if not preview_emitted:
@@ -94,7 +96,7 @@ class WorkerThread(QThread):
                         try:
                             os.remove(temp_path)
                         except Exception as e:
-                            logging.warning(f"Unable to remove temporary file {temp_path}: {e}")
+                            logger.warning("Unable to remove temporary file %s: %s", temp_path, e)
 
     def update_progress_with_status(self, value):
         """更新进度并发送状态信息"""

@@ -90,6 +90,27 @@ uv run radon raw src
 npx --yes jscpd@4.0.5 --config .jscpd.json src tests
 ```
 
+### Gate Strategy
+
+Quality checks are grouped by enforcement level:
+
+- Must pass: `ruff check`, `ruff format --check`, `pytest`, coverage threshold, `mypy`, `lint-imports`, and high-signal security scans.
+- Threshold-based: coverage stays at 80%; Ruff `C901` blocks functions above the configured complexity limit; jscpd currently allows up to 5% duplication.
+- Report/trend: Radon complexity, maintainability index, raw size, and comment metrics.
+
+Ruff is intentionally the first gate because it is fast and deterministic. The active rule set is:
+
+- Base correctness and style: `E`, `F`, `I`, `W`
+- Bug-prone patterns and modernization: `B`, `UP`, `SIM`, `RUF`
+- Naming and complexity: `N`, `C90`
+- Low-noise cleanup and logging hygiene: `RET`, `LOG`
+
+Rules with a higher migration cost are staged instead of enabled all at once:
+
+- Next candidates: `ARG`, `TRY`, `BLE`, and `EM`, after existing exception paths are cleaned up.
+- Later candidates: `PL` for opinionated Pylint-derived checks and `D` for docstrings on public APIs.
+- Existing Chinese UI strings, comments, and docstrings intentionally keep full-width punctuation; `RUF001`, `RUF002`, and `RUF003` remain ignored.
+
 Focused test runs are useful while iterating:
 
 ```bash
@@ -143,12 +164,6 @@ GitHub Actions runs on pushes and pull requests to `main`:
 - `pip-audit` for dependency vulnerabilities
 - `radon` for complexity, maintainability, and raw code metrics
 - `jscpd` for duplicate code detection
-
-Quality gates are intentionally split by purpose:
-
-- Must pass: formatting, linting, type checking, tests, coverage, architecture contract, and security scans.
-- Threshold-based: coverage stays at 80%; jscpd currently allows up to 5% duplication.
-- Report/trend: Radon complexity, maintainability index, raw size, and comment metrics.
 
 Release publishing is handled by `.github/workflows/release.yml` when a tag matching `v*` is pushed. The workflow uses PyPI Trusted Publishing through OIDC, so no PyPI API token should be stored in GitHub Secrets.
 

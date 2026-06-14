@@ -61,7 +61,7 @@ dev = [
     "pytest>=9.0.3",
     "pytest-cov>=4.0",
     "pytest-qt>=4.4.0",
-    "ruff>=0.1.0",
+    "ruff>=0.15.17",
     "mypy>=1.0.0",
     "pre-commit>=4.6.0",
     "bandit>=1.9.4",
@@ -93,7 +93,7 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "B", "UP", "SIM", "C90", "RUF"]
+select = ["E", "F", "I", "N", "W", "B", "UP", "SIM", "C90", "RET", "LOG", "RUF"]
 ignore = [
     "E501",
     "N802",
